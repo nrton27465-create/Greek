@@ -1,233 +1,486 @@
 <!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<title>🔮 เว็บดูดวงตามวันเกิด</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  body{
-    font-family: "Segoe UI", Tahoma, sans-serif;
-    background: linear-gradient(135deg,#1e1e2f,#3a3a6a);
-    color:#fff;
-    margin:0;
-    padding:0;
-  }
-  .container{
-    max-width:720px;
-    margin:auto;
-    padding:30px 20px 60px;
-  }
-  h1{
-    text-align:center;
-    margin-bottom:10px;
-  }
-  .card{
-    background:#ffffff;
-    color:#333;
-    border-radius:16px;
-    padding:20px;
-    margin-top:20px;
-    box-shadow:0 10px 30px rgba(0,0,0,.25);
-  }
-  label{
-    display:block;
-    margin-top:15px;
-    font-weight:bold;
-  }
-  input,button{
-    width:100%;
-    padding:10px;
-    margin-top:6px;
-    font-size:16px;
-    border-radius:8px;
-    border:1px solid #ccc;
-  }
-  button{
-    margin-top:20px;
-    background:#6c63ff;
-    color:white;
-    border:none;
-    cursor:pointer;
-    font-size:18px;
-  }
-  button:hover{background:#584ee0;}
-  .result p{margin:8px 0;}
-  .badge{
-    display:inline-block;
-    padding:4px 10px;
-    border-radius:20px;
-    font-size:14px;
-    margin-right:6px;
-    background:#eee;
-  }
-  footer{
-    text-align:center;
-    font-size:13px;
-    opacity:.7;
-    margin-top:40px;
-  }
-</style>
-</head>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<body>
-<div class="container">
-  <h1>🔮 ดูดวงตามวันเกิด</h1>
-  <p style="text-align:center">อิงวันเกิด + วันที่ต้องการดู (เพื่อความบันเทิง)</p>
+    <title>สมัครสมาชิก ร้านทำผม</title>
 
-  <div class="card">
-    <label>วันเดือนปีเกิด</label>
-    <input type="date" id="birth">
+    <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
 
-    <label>วันที่ต้องการดูดวง</label>
-    <input type="date" id="target">
+      body {
+        font-family: 'Segoe UI', 'Sukhumvit Set', 'Sarabun', Tahoma, sans-serif;
+        background: #0f172a;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
 
-    <button onclick="predict()">ดูดวง</button>
-  </div>
+      .background-pattern {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+          radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+          radial-gradient(circle at 40% 20%, rgba(59, 130, 246, 0.2) 0%, transparent 50%);
+        pointer-events: none;
+      }
 
-  <div class="card result" id="result"></div>
+      .container {
+        position: relative;
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(10px);
+        min-height: 100vh;
+        padding: 40px 28px;
+      }
 
-  <footer>
-    คำทำนายเพื่อความบันเทิงเท่านั้น<br>
-    © Horoscope Web
-  </footer>
-</div>
+      @media (min-width: 640px) {
+        .container {
+          margin: 20px auto;
+          min-height: auto;
+          border-radius: 24px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+      }
 
-<script>
-// =====================
-// คลังคำทำนาย (เยอะ + หลากหลาย)
-// level: 2=ดี, 1=กลาง, 0=ระวัง
-// =====================
-const DB = {
-  work: [
-    {t:"มีโอกาสได้เริ่มโปรเจกต์ใหม่ที่ทำให้ผู้ใหญ่เห็นผลงาน",level:2},
-    {t:"งานเร่ง งานด่วนเข้ามาพร้อมกัน ต้องจัดลำดับให้ดี",level:1},
-    {t:"ระวังความผิดพลาดจากการสื่อสารหรือเอกสาร",level:0},
-    {t:"เหมาะกับการเสนอไอเดียใหม่ จะมีคนสนับสนุน",level:2},
-    {t:"งานเดินช้าแต่มั่นคง อย่าเร่งเกินไป",level:1},
-    {t:"มีแนวโน้มปะทะทางอารมณ์กับเพื่อนร่วมงาน",level:0},
-    {t:"มีคนช่วยเหลือแบบไม่คาดคิด",level:2},
-    {t:"เหมาะกับการปิดงานค้างและสรุปผล",level:1},
-    {t:"ระวังหลุดเดดไลน์เพราะรับหลายงานเกินไป",level:0},
-    {t:"ชื่อเสียงในงานเริ่มเด่นขึ้น",level:2}
-  ],
-  money: [
-    {t:"มีรายรับพิเศษหรือโชคลาภเล็กน้อย",level:2},
-    {t:"รายจ่ายเกี่ยวกับของจำเป็น",level:1},
-    {t:"ระวังค่าใช้จ่ายกะทันหัน",level:0},
-    {t:"เหมาะกับการเคลียร์หนี้หรือวางแผนการเงิน",level:1},
-    {t:"มีโอกาสได้เงินคืนหรือผลตอบแทนที่รออยู่",level:2},
-    {t:"อย่าเพิ่งลงทุนเสี่ยงในช่วงนี้",level:0},
-    {t:"การเงินคล่องขึ้นกว่าช่วงก่อน",level:2},
-    {t:"ใช้เงินเก่งเกินไป ต้องคุมงบ",level:0},
-    {t:"มีคนช่วยแบ่งเบาภาระค่าใช้จ่าย",level:1},
-    {t:"ต่อรองราคาแล้วได้ผลดี",level:2}
-  ],
-  love: [
-    {t:"ความรักสดใส มีเรื่องดีให้ยิ้ม",level:2},
-    {t:"คนโสดมีเกณฑ์เจอคนใหม่จากงานหรือออนไลน์",level:2},
-    {t:"ความสัมพันธ์เรื่อย ๆ แต่ต้องสื่อสารให้ชัด",level:1},
-    {t:"ระวังคำพูดทำให้อีกฝ่ายน้อยใจ",level:0},
-    {t:"มีโอกาสปรับความเข้าใจกัน",level:2},
-    {t:"อย่าเก็บทุกอย่างไว้คนเดียว",level:1},
-    {t:"คนเก่าอาจกลับมาทัก",level:1},
-    {t:"ระวังบุคคลที่สามหรือเรื่องเข้าใจผิด",level:0},
-    {t:"คู่รักควรหาเวลาให้กัน",level:1},
-    {t:"เสน่ห์แรงเป็นพิเศษวันนี้",level:2}
-  ],
-  health: [
-    {t:"สุขภาพโดยรวมแข็งแรง",level:2},
-    {t:"พักผ่อนน้อยไป ควรนอนให้พอ",level:1},
-    {t:"ระวังออฟฟิศซินโดรม ปวดคอไหล่",level:1},
-    {t:"มีแนวโน้มเครียดสะสม",level:0},
-    {t:"ออกกำลังกายเบา ๆ จะดีมาก",level:2},
-    {t:"ระวังอาหารรสจัด",level:0},
-    {t:"พลังงานดี เหมาะกับกิจกรรมกลางแจ้ง",level:2},
-    {t:"ควรดื่มน้ำมากขึ้น",level:1},
-    {t:"ระวังปวดหัวจากจอ",level:0},
-    {t:"ตรวจสุขภาพแล้วสบายใจขึ้น",level:2}
-  ],
-  travel: [
-    {t:"การเดินทางราบรื่น",level:2},
-    {t:"ระวังรถติดหรือดีเลย์เล็กน้อย",level:1},
-    {t:"อย่าขับรถเร็วหรือรีบเกินไป",level:0},
-    {t:"มีเกณฑ์เดินทางไกล",level:2},
-    {t:"เหมาะกับทริปสั้น ๆ รีเฟรชใจ",level:2},
-    {t:"ตรวจเอกสาร/ของใช้ก่อนออก",level:1},
-    {t:"อาจมีการเปลี่ยนแผนกะทันหัน",level:0},
-    {t:"เดินทางแล้วเจอคนรู้จัก",level:1},
-    {t:"วันนี้ไม่เหมาะกับที่คนเยอะ",level:0},
-    {t:"วางแผนล่วงหน้าแล้วจะราบรื่น",level:2}
-  ]
-};
+      .header {
+        margin-bottom: 36px;
+      }
 
-const EXTRA = {
-  focus:[
-    "โฟกัส: ทำทีละอย่างแล้วจะเห็นผล",
-    "โฟกัส: สื่อสารให้ชัด ลดความเข้าใจผิด",
-    "โฟกัส: พักผ่อนให้พอ งานจะไหล",
-    "โฟกัส: วางแผนก่อนตัดสินใจ",
-    "โฟกัส: ดูแลสุขภาพเป็นอันดับแรก"
-  ],
-  luckyColor:["ฟ้า","เขียว","ม่วง","ชมพู","ทอง","ขาว","แดง","น้ำตาล"],
-  luckyNumber:["1","3","5","7","8","9","11","15","24","28"]
-};
+      .brand {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 8px;
+      }
 
-// PRNG ให้ผลเดิมทุกครั้ง
-function mulberry32(a){
-  return function(){
-    let t=a+=0x6D2B79F5;
-    t=Math.imul(t^(t>>>15),t|1);
-    t^=t+Math.imul(t^(t>>>7),t|61);
-    return((t^(t>>>14))>>>0)/4294967296;
-  }
-}
+      h1 {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+        line-height: 1.2;
+        letter-spacing: -0.5px;
+      }
 
-function pick(arr,rng){
-  return arr[Math.floor(rng()*arr.length)];
-}
+      .divider {
+        width: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 2px;
+        margin-top: 12px;
+      }
 
-function label(level){
-  if(level===2) return "ดีมาก ⭐⭐⭐⭐";
-  if(level===1) return "กลาง ⭐⭐⭐";
-  return "ต้องระวัง ⭐⭐";
-}
+      .form-group {
+        margin-bottom: 20px;
+      }
 
-function predict(){
-  const b=document.getElementById("birth").value;
-  const t=document.getElementById("target").value;
-  if(!b||!t){alert("กรุณาเลือกวันให้ครบ");return;}
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #475569;
+        letter-spacing: -0.2px;
+      }
 
-  const bd=new Date(b);
-  const td=new Date(t);
+      label .required {
+        color: #ef4444;
+        margin-left: 2px;
+      }
 
-  const seed =
-    (bd.getFullYear()*10000+(bd.getMonth()+1)*100+bd.getDate())*7 +
-    (td.getFullYear()*10000+(td.getMonth()+1)*100+td.getDate())*13;
+      input[type="text"],
+      input[type="tel"],
+      input[type="date"],
+      textarea,
+      select {
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        font-size: 16px;
+        background: #ffffff;
+        transition: all 0.2s ease;
+        color: #1e293b;
+        font-weight: 500;
+      }
 
-  const rng=mulberry32(seed);
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: #667eea;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      }
 
-  const w=pick(DB.work,rng);
-  const m=pick(DB.money,rng);
-  const l=pick(DB.love,rng);
-  const h=pick(DB.health,rng);
-  const tr=pick(DB.travel,rng);
+      input::placeholder,
+      textarea::placeholder {
+        color: #94a3b8;
+        font-size: 15px;
+        font-weight: 400;
+      }
 
-  const focus=pick(EXTRA.focus,rng);
-  const color=pick(EXTRA.luckyColor,rng);
-  const num=pick(EXTRA.luckyNumber,rng);
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+        font-family: inherit;
+        line-height: 1.6;
+      }
 
-  document.getElementById("result").innerHTML=`
-    <h3>ผลคำทำนาย</h3>
-    <p><b>การงาน:</b> <span class="badge">${label(w.level)}</span> ${w.t}</p>
-    <p><b>การเงิน:</b> <span class="badge">${label(m.level)}</span> ${m.t}</p>
-    <p><b>ความรัก:</b> <span class="badge">${label(l.level)}</span> ${l.t}</p>
-    <p><b>สุขภาพ:</b> <span class="badge">${label(h.level)}</span> ${h.t}</p>
-    <p><b>การเดินทาง:</b> <span class="badge">${label(tr.level)}</span> ${tr.t}</p>
-    <hr>
-    <p>${focus}</p>
-    <p><b>สีเสริมดวง:</b> ${color} | <b>เลขนำโชค:</b> ${num}</p>
-  `;
-}
-</script>
-</body>
+      select {
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 20px;
+        padding-right: 44px;
+        cursor: pointer;
+      }
+
+      select option {
+        font-size: 16px;
+        padding: 10px;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 17px;
+        font-weight: 700;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #ffffff;
+        margin-top: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+        letter-spacing: 0.3px;
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn:disabled {
+        background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
+        cursor: not-allowed;
+        box-shadow: none;
+        opacity: 0.6;
+      }
+
+      .message {
+        margin-top: 20px;
+        padding: 16px 18px;
+        font-size: 15px;
+        text-align: center;
+        border-radius: 12px;
+        font-weight: 600;
+        line-height: 1.6;
+        display: none;
+      }
+
+      .message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .success {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 2px solid #a7f3d0;
+      }
+
+      .error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 2px solid #fecaca;
+      }
+
+      .customer-id {
+        font-size: 18px;
+        font-weight: 800;
+        color: #667eea;
+        margin-top: 6px;
+        letter-spacing: 0.5px;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2.5px solid rgba(255,255,255,.25);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 0.7s linear infinite;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      input.error-input,
+      select.error-input,
+      textarea.error-input {
+        border-color: #ef4444;
+        background: #fef2f2;
+      }
+
+      .field-error {
+        color: #dc2626;
+        font-size: 14px;
+        margin-top: 6px;
+        font-weight: 500;
+        display: none;
+      }
+
+      .field-error.show {
+        display: block;
+      }
+
+      .info-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-left: 4px solid #3b82f6;
+        padding: 14px 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+      }
+
+      .info-card p {
+        margin: 0;
+        font-size: 14px;
+        color: #1e40af;
+        font-weight: 500;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="background-pattern"></div>
+    
+    <div class="container">
+      <div class="header">
+        <div class="brand">HAIR SALON</div>
+        <h1>สมัครสมาชิก</h1>
+        <div class="divider"></div>
+      </div>
+
+      <div class="info-card">
+        <p>กรอกข้อมูลเพื่อรับสิทธิพิเศษและสะสมแต้มทุกครั้งที่ใช้บริการ</p>
+      </div>
+
+      <form id="memberForm" novalidate>
+        <div class="form-group">
+          <label for="name">
+            ชื่อ-นามสกุล <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="name" 
+            name="name" 
+            placeholder="ระบุชื่อและนามสกุล"
+            required
+            autocomplete="name"
+          >
+          <div class="field-error" id="nameError">กรุณากรอกชื่อ-นามสกุล</div>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">
+            เบอร์โทรศัพท์ <span class="required">*</span>
+          </label>
+          <input 
+            type="tel" 
+            id="phone" 
+            name="phone" 
+            placeholder="08X-XXX-XXXX"
+            required
+            pattern="[0-9]{9,10}"
+            autocomplete="tel"
+          >
+          <div class="field-error" id="phoneError">กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</div>
+        </div>
+
+        <div class="form-group">
+          <label for="gender">
+            เพศ <span class="required">*</span>
+          </label>
+          <select id="gender" name="gender" required>
+            <option value="">เลือกเพศ</option>
+            <option value="ชาย">ชาย</option>
+            <option value="หญิง">หญิง</option>
+            <option value="LGBTQ+">LGBTQ+</option>
+          </select>
+          <div class="field-error" id="genderError">กรุณาเลือกเพศ</div>
+        </div>
+
+        <div class="form-group">
+          <label for="birthdate">วันเดือนปีเกิด</label>
+          <input 
+            type="date"
+            style="width: 95%;"
+            id="birthdate" 
+            name="birthdate"
+            max="2025-12-30"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="note">หมายเหตุ</label>
+          <textarea 
+            id="note" 
+            name="note" 
+            placeholder="สภาพเส้นผม, การแพ้ผลิตภัณฑ์, หรือข้อมูลอื่นๆ ที่ต้องการแจ้ง"
+          ></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn">
+          บันทึกข้อมูลสมาชิก
+        </button>
+
+        <div id="message" class="message"></div>
+      </form>
+    </div>
+
+    <script>
+      const form = document.getElementById('memberForm');
+      const submitBtn = document.getElementById('submitBtn');
+      const messageEl = document.getElementById('message');
+
+      function showFieldError(fieldId, show = true) {
+        const field = document.getElementById(fieldId);
+        const errorEl = document.getElementById(fieldId + 'Error');
+        
+        if (show) {
+          field.classList.add('error-input');
+          errorEl.classList.add('show');
+        } else {
+          field.classList.remove('error-input');
+          errorEl.classList.remove('show');
+        }
+      }
+
+      ['name', 'phone', 'gender'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        field.addEventListener('input', () => showFieldError(fieldId, false));
+        field.addEventListener('change', () => showFieldError(fieldId, false));
+      });
+
+      function validatePhone(phone) {
+        const cleaned = phone.replace(/[\s\-]/g, '');
+        return /^0[0-9]{8,9}$/.test(cleaned);
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        
+        messageEl.className = 'message';
+        messageEl.style.display = 'none';
+
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const gender = document.getElementById('gender').value;
+        const birthdate = document.getElementById('birthdate').value;
+        const note = document.getElementById('note').value.trim();
+
+        let hasError = false;
+
+        if (!name) {
+          showFieldError('name', true);
+          hasError = true;
+        }
+
+        if (!phone || !validatePhone(phone)) {
+          showFieldError('phone', true);
+          hasError = true;
+        }
+
+        if (!gender) {
+          showFieldError('gender', true);
+          hasError = true;
+        }
+
+        if (hasError) {
+          messageEl.textContent = 'กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วนและถูกต้อง';
+          messageEl.className = 'message error show';
+          messageEl.style.display = 'block';
+          
+          const firstError = document.querySelector('.error-input');
+          if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'กำลังบันทึก<span class="spinner"></span>';
+
+        const memberData = {
+          name: name,
+          phone: phone,
+          gender: gender,
+          birthdate: birthdate,
+          note: note
+        };
+
+        google.script.run
+          .withSuccessHandler(function (customerId) {
+            messageEl.innerHTML = 
+              'บันทึกข้อมูลสำเร็จ<br>' +
+              '<div class="customer-id">รหัสสมาชิก: ' + customerId + '</div>';
+            messageEl.className = 'message success show';
+            messageEl.style.display = 'block';
+            
+            form.reset();
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            setTimeout(() => {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'บันทึกข้อมูลสมาชิก';
+            }, 2000);
+          })
+          .withFailureHandler(function (error) {
+            messageEl.textContent = 'เกิดข้อผิดพลาด: ' + error.message;
+            messageEl.className = 'message error show';
+            messageEl.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'บันทึกข้อมูลสมาชิก';
+          })
+          .saveMember(memberData);
+      });
+    </script>
+  </body>
 </html>
