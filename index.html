@@ -3,220 +3,522 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transport - Office</title>
+  <title>Transport Office</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background:#f6f7fb; }
+    .card { border:0; box-shadow: 0 8px 24px rgba(15,23,42,.06); border-radius: 16px; }
+    .nav-pills .nav-link { border-radius: 999px; }
+    .small-muted { font-size:.9rem; color:#64748b; }
+    pre { background:#0b1020; color:#d1e7ff; padding:12px; border-radius:12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  </style>
 </head>
 <body>
-<div class="container py-3">
+<div class="container py-4">
+
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h3 class="mb-0">🏢 Transport - Office</h3>
-      <div class="text-muted">Order → Plan → Assign → Fuel → Summary</div>
+      <h3 class="mb-0">🚚 Transport Office</h3>
+      <div class="small-muted">รับออเดอร์ → วางแผน(น้ำมัน) → มอบหมาย → เติมน้ำมันกลับ → สรุปต้นทุน</div>
     </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" id="btnRefresh">รีเฟรช</button>
-      <button class="btn btn-outline-primary" id="btnSeed">ใส่รถ/คนขับตัวอย่าง</button>
-    </div>
+    <button class="btn btn-outline-primary" onclick="bootstrap()">รีเฟรชข้อมูล</button>
   </div>
 
-  <ul class="nav nav-pills mb-3">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabOrders">📥 รับออเดอร์</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabManage">🧠 วางแผน/มอบหมาย</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabFuel">⛽ เติมน้ำมัน</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabSummary">📊 สรุปต้นทุน</button></li>
+  <div class="alert alert-warning">
+    <div class="fw-bold">ตั้งค่า SCRIPT_URL ก่อนใช้งาน</div>
+    <div class="small">เปิดไฟล์นี้ แล้วแก้ค่า <span class="mono">https://script.google.com/macros/s/AKfycbydYXCZioSSBk_wX6Hflo_QEhmal0glbhPRQDKBXqrlkkMnXFmgCoJ2VoegYqE_oYj5/exec</span> ให้เป็นลิงก์ Deploy ของ Apps Script</div>
+  </div>
+
+  <ul class="nav nav-pills gap-2 mb-3" id="tabs">
+    <li class="nav-item"><button class="nav-link active" data-tab="tabOrder">1) รับออเดอร์</button></li>
+    <li class="nav-item"><button class="nav-link" data-tab="tabPlan">2) วางแผน/มอบหมาย</button></li>
+    <li class="nav-item"><button class="nav-link" data-tab="tabFuel">3) เติมน้ำมันกลับ</button></li>
+    <li class="nav-item"><button class="nav-link" data-tab="tabSummary">4) สรุปต้นทุน</button></li>
   </ul>
 
-  <div class="tab-content">
-    <!-- Orders -->
-    <div class="tab-pane fade show active" id="tabOrders">
-      <div class="card p-3 mb-3">
-        <h5 class="mb-3">➕ บันทึกออเดอร์ใหม่</h5>
-        <form id="orderForm" class="row g-2">
-          <div class="col-md-2">
-            <label class="form-label">วันที่</label>
-            <input type="date" name="date" class="form-control" required>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">ลูกค้า</label>
-            <input type="text" name="customer" class="form-control" required>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">สถานที่ส่ง</label>
-            <input type="text" name="destination" class="form-control" required>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">สินค้า</label>
-            <input type="text" name="product" class="form-control" value="ข้าวโพดเลี้ยงสัตว์" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">จำนวน (ตัน)</label>
-            <input type="number" step="0.01" name="qtyTon" class="form-control" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">ราคาขาย/เที่ยว</label>
-            <input type="number" step="1" name="saleAmount" class="form-control" required>
-          </div>
-          <div class="col-12">
-            <button class="btn btn-primary">บันทึกออเดอร์</button>
-          </div>
-        </form>
-      </div>
+  <!-- TAB 1: Orders -->
+  <div id="tabOrder" class="tab-pane">
+    <div class="card p-3 mb-3">
+      <h5 class="mb-3">📥 รับออเดอร์</h5>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">ลูกค้า</label>
+          <select id="customerId" class="form-select"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">วันส่ง (YYYY-MM-DD)</label>
+          <input id="shipDate" class="form-control" placeholder="2026-02-17">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">จุดส่ง</label>
+          <input id="destination" class="form-control" placeholder="เช่น โคราช / โรงงาน A">
+        </div>
 
-      <div class="card p-3">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <h5 class="mb-0">📦 รายการออเดอร์</h5>
-          <div class="text-muted small">NEW / PLANNED / ASSIGNED / DELIVERED</div>
+        <div class="col-md-4">
+          <label class="form-label">สินค้า</label>
+          <select id="product" class="form-select"></select>
         </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-striped align-middle">
-            <thead>
-              <tr>
-                <th>OrderNo</th><th>วันที่</th><th>ลูกค้า</th><th>ปลายทาง</th>
-                <th class="text-end">ตัน</th><th class="text-end">ขาย/เที่ยว</th>
-                <th>สถานะ</th><th class="text-end">PlanKm</th><th class="text-end">PlanFuel</th>
-              </tr>
-            </thead>
-            <tbody id="ordersTbody"></tbody>
-          </table>
+        <div class="col-md-2">
+          <label class="form-label">จำนวน</label>
+          <input id="qty" class="form-control" type="number" step="0.01" placeholder="เช่น 30">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">หน่วย</label>
+          <input id="unit" class="form-control" value="ตัน">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">ราคาต่อหน่วย</label>
+          <input id="ppu" class="form-control" type="number" step="0.01" placeholder="0 = ไม่บังคับ">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="createOrder()">บันทึกออเดอร์</button>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">หมายเหตุ</label>
+          <input id="orderNote" class="form-control" placeholder="เช่น ส่งด่วน / โทรก่อนถึง">
         </div>
       </div>
+      <div id="orderMsg" class="mt-3"></div>
     </div>
 
-    <!-- Manage -->
-    <div class="tab-pane fade" id="tabManage">
-      <div class="card p-3 mb-3">
-        <h5 class="mb-2">🧠 วางแผน + 📋 มอบหมาย</h5>
-        <div class="text-muted small mb-3">เลือก Order → ใส่แผน → เลือกรถ/คนขับ → มอบหมายสร้าง Trip</div>
-
-        <div class="row g-2">
-          <div class="col-md-6">
-            <label class="form-label">เลือกออเดอร์</label>
-            <select id="selOrder" class="form-select"></select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">PlanKm</label>
-            <input id="planKm" type="number" step="0.1" class="form-control">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">PlanFuel (ลิตร)</label>
-            <input id="planFuel" type="number" step="0.01" class="form-control">
-          </div>
-
-          <div class="col-12 d-flex gap-2">
-            <button class="btn btn-outline-primary" id="btnPlan">บันทึกวางแผน</button>
-          </div>
-
-          <hr class="my-3"/>
-
-          <div class="col-md-6">
-            <label class="form-label">เลือกรถ</label>
-            <select id="selCar" class="form-select"></select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">เลือกคนขับ</label>
-            <select id="selDriver" class="form-select"></select>
-          </div>
-
-          <div class="col-12 d-flex gap-2">
-            <button class="btn btn-success" id="btnAssign">มอบหมาย (สร้าง Trip)</button>
-          </div>
-        </div>
+    <div class="card p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">รายการออเดอร์</h5>
+        <select id="orderStatusFilter" class="form-select" style="max-width:220px" onchange="loadOrders()">
+          <option value="">ทั้งหมด</option>
+          <option value="NEW">NEW</option>
+          <option value="PLANNED">PLANNED</option>
+          <option value="ASSIGNED">ASSIGNED</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
       </div>
-
-      <div class="card p-3">
-        <h5 class="mb-2">🚚 Trips ทั้งหมด</h5>
-        <div class="table-responsive">
-          <table class="table table-sm table-striped align-middle">
-            <thead>
-              <tr>
-                <th>TripNo</th><th>OrderNo</th><th>รถ</th><th>คนขับ</th><th>สถานะ</th>
-                <th class="text-end">ActualKm</th><th class="text-end">ActualFuel</th><th>หมายเหตุ</th>
-              </tr>
-            </thead>
-            <tbody id="tripsTbody"></tbody>
-          </table>
-        </div>
+      <div class="table-responsive mt-2">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>OrderId</th><th>ลูกค้า</th><th>วันส่ง</th><th>จุดส่ง</th><th>สินค้า</th><th class="text-end">จำนวน</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTbody"></tbody>
+        </table>
       </div>
     </div>
-
-    <!-- Fuel -->
-    <div class="tab-pane fade" id="tabFuel">
-      <div class="card p-3 mb-3">
-        <h5 class="mb-3">⛽ บันทึกเติมน้ำมัน</h5>
-        <form id="fuelForm" class="row g-2">
-          <div class="col-md-6">
-            <label class="form-label">เลือก Trip</label>
-            <select name="tripId" id="selFuelTrip" class="form-select" required></select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">ลิตร</label>
-            <input type="number" step="0.01" name="liters" class="form-control" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">บาท/ลิตร</label>
-            <input type="number" step="0.01" name="pricePerLiter" class="form-control" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">หมายเหตุ</label>
-            <input type="text" name="note" class="form-control" placeholder="เช่น ปตท.">
-          </div>
-          <div class="col-12">
-            <button class="btn btn-primary">บันทึกเติมน้ำมัน</button>
-          </div>
-        </form>
-      </div>
-      <div class="alert alert-info mb-0">
-        ระบบจะนำค่าเติมน้ำมันไปคำนวณ “ต้นทุนต่อเที่ยว” ในหน้า สรุปต้นทุน
-      </div>
-    </div>
-
-    <!-- Summary -->
-    <div class="tab-pane fade" id="tabSummary">
-      <div class="card p-3 mb-3">
-        <h5 class="mb-2">⚙️ ตั้งค่า (ต้นทุนคงที่ต่อเที่ยว)</h5>
-        <div class="row g-2 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label">ค่าแรง/เที่ยว (บาท)</label>
-            <input id="laborPerTrip" type="number" step="1" class="form-control">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">ค่าใช้จ่ายอื่น/เที่ยว (บาท)</label>
-            <input id="otherPerTrip" type="number" step="1" class="form-control">
-          </div>
-          <div class="col-md-3">
-            <button class="btn btn-outline-primary" id="btnSaveCost">บันทึกตั้งค่า</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card p-3">
-        <h5 class="mb-2">📊 สรุปกำไร/ขาดทุน ต่อเที่ยว</h5>
-        <div class="table-responsive">
-          <table class="table table-sm table-striped align-middle">
-            <thead>
-              <tr>
-                <th>Trip</th><th>Order</th><th>รถ</th><th>คนขับ</th><th>สถานะ Trip</th>
-                <th class="text-end">ขาย/เที่ยว</th>
-                <th class="text-end">น้ำมันจริง</th>
-                <th class="text-end">ค่าแรง</th>
-                <th class="text-end">อื่น ๆ</th>
-                <th class="text-end">กำไร/ขาดทุน</th>
-              </tr>
-            </thead>
-            <tbody id="sumTbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
   </div>
+
+  <!-- TAB 2: Plan/Assign -->
+  <div id="tabPlan" class="tab-pane d-none">
+    <div class="card p-3 mb-3">
+      <h5 class="mb-3">🗺️ วางแผน (กำหนดน้ำมัน) + 👨‍✈️ มอบหมาย</h5>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">เลือก OrderId</label>
+          <select id="planOrderId" class="form-select"></select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">น้ำมันที่วางแผน (ลิตร)</label>
+          <input id="plannedLiters" class="form-control" type="number" step="0.01">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">งบน้ำมัน (บาท)</label>
+          <input id="plannedBudget" class="form-control" type="number" step="0.01">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-outline-primary w-100" onclick="planOrder()">บันทึกแผน</button>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">วันที่ออกวิ่ง</label>
+          <input id="tripDate" class="form-control" placeholder="2026-02-17">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">รถ</label>
+          <select id="truckId" class="form-select"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">คนขับ</label>
+          <select id="driverId" class="form-select"></select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">หมายเหตุ (มอบหมาย)</label>
+          <input id="assignNote" class="form-control" placeholder="เช่น เส้นทาง/เบอร์ติดต่อ">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="assignOrder()">มอบหมาย</button>
+        </div>
+      </div>
+      <div id="planMsg" class="mt-3"></div>
+    </div>
+
+    <div class="card p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">รายการ Trips</h5>
+        <select id="tripStatusFilter" class="form-select" style="max-width:220px" onchange="loadTrips()">
+          <option value="">ทั้งหมด</option>
+          <option value="ASSIGNED">ASSIGNED</option>
+          <option value="DELIVERED">DELIVERED</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+      </div>
+      <div class="table-responsive mt-2">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>TripId</th><th>OrderId</th><th>วันที่</th><th>รถ</th><th>คนขับ</th><th>Status</th>
+              <th class="text-end">Plan Liters</th><th class="text-end">Plan Budget</th>
+            </tr>
+          </thead>
+          <tbody id="tripsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Fuel -->
+  <div id="tabFuel" class="tab-pane d-none">
+    <div class="card p-3 mb-3">
+      <h5 class="mb-3">⛽ บันทึกเติมน้ำมัน (ตอนกลับ)</h5>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">เลือก TripId</label>
+          <select id="fuelTripId" class="form-select"></select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">วันที่เติม</label>
+          <input id="fuelDate" class="form-control" placeholder="2026-02-17">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">ลิตร</label>
+          <input id="fuelLiters" class="form-control" type="number" step="0.01">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">บาท/ลิตร</label>
+          <input id="fuelPpl" class="form-control" type="number" step="0.01">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">ยอดเงิน (ถ้าเว้นว่างจะคำนวณให้)</label>
+          <input id="fuelAmount" class="form-control" type="number" step="0.01">
+        </div>
+        <div class="col-12">
+          <label class="form-label">หมายเหตุ</label>
+          <input id="fuelNote" class="form-control" placeholder="เช่น เติมปั๊มไหน / ใบเสร็จเลขที่...">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="fuelReturn()">บันทึก + ปิดงาน</button>
+        </div>
+      </div>
+      <div id="fuelMsg" class="mt-3"></div>
+    </div>
+  </div>
+
+  <!-- TAB 4: Summary -->
+  <div id="tabSummary" class="tab-pane d-none">
+    <div class="card p-3">
+      <h5 class="mb-3">📊 สรุปต้นทุน (น้ำมัน)</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">ตั้งแต่ (YYYY-MM-DD)</label>
+          <input id="sumFrom" class="form-control" placeholder="2026-02-01">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">ถึง (YYYY-MM-DD)</label>
+          <input id="sumTo" class="form-control" placeholder="2026-02-28">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100" onclick="loadSummary()">สรุป</button>
+        </div>
+      </div>
+
+      <div id="summaryBox" class="mt-3"></div>
+    </div>
+  </div>
+
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="app.js"></script>
 <script>
-  document.addEventListener("DOMContentLoaded", officeInit);
+/** 👉 ใส่ URL ตอน Deploy Apps Script (ลงท้ายด้วย /exec) */
+const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEBAPP_URL_HERE";
+
+/** ---------- JSONP helper ---------- */
+function jsonp(action, params = {}) {
+  return new Promise((resolve, reject) => {
+    const cb = "cb_" + Math.random().toString(36).slice(2);
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.set("action", action);
+    url.searchParams.set("callback", cb);
+
+    Object.keys(params).forEach(k => {
+      if (params[k] !== undefined && params[k] !== null) {
+        url.searchParams.set(k, params[k]);
+      }
+    });
+
+    const script = document.createElement("script");
+    script.src = url.toString();
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("JSONP request failed"));
+    };
+
+    window[cb] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup() {
+      delete window[cb];
+      script.remove();
+    }
+
+    document.body.appendChild(script);
+  });
+}
+
+/** ---------- UI helpers ---------- */
+function setMsg(id, ok, text) {
+  document.getElementById(id).innerHTML =
+    `<div class="alert ${ok ? "alert-success" : "alert-danger"} mb-0">${text}</div>`;
+}
+
+function optionize(selectId, items, placeholder="-- เลือก --") {
+  const el = document.getElementById(selectId);
+  el.innerHTML = `<option value="">${placeholder}</option>` +
+    items.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} (${escapeHtml(x.id)})</option>`).join("");
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
+
+/** ---------- Tabs ---------- */
+document.querySelectorAll("#tabs .nav-link").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#tabs .nav-link").forEach(x => x.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.add("d-none"));
+    document.getElementById(tab).classList.remove("d-none");
+  });
+});
+
+/** ---------- App state ---------- */
+let DDL = { drivers:[], trucks:[], customers:[], products:[] };
+
+/** ---------- Load bootstrap ---------- */
+async function bootstrap() {
+  if (!SCRIPT_URL || SCRIPT_URL.includes("PASTE_")) {
+    alert("กรุณาแก้ SCRIPT_URL ให้เป็นลิงก์ /exec จาก Apps Script ก่อน");
+    return;
+  }
+  const data = await jsonp("bootstrap");
+  if (!data.ok) { alert(data.error || "bootstrap error"); return; }
+
+  DDL = data.ddl;
+
+  optionize("customerId", DDL.customers, "-- เลือกลูกค้า --");
+  optionize("product", DDL.products, "-- เลือกสินค้า --");
+
+  optionize("truckId", DDL.trucks, "-- เลือกรถ --");
+  optionize("driverId", DDL.drivers, "-- เลือกคนขับ --");
+
+  await loadOrders();
+  await loadTrips();
+  await refreshPickers();
+}
+
+async function refreshPickers() {
+  // Orders for planning
+  const orders = await jsonp("listOrders", { status: "" });
+  if (orders.ok) {
+    const items = orders.orders.map(o => ({ id: o.orderId, name: `${o.orderId} | ${o.customerName} | ${o.shipDate} | ${o.status}` }));
+    optionize("planOrderId", items, "-- เลือก Order --");
+  }
+  // Trips for fuel
+  const trips = await jsonp("listTrips", { status: "ASSIGNED" });
+  if (trips.ok) {
+    const items = trips.trips.map(t => ({ id: t.tripId, name: `${t.tripId} | ${t.orderId} | ${t.truckName} | ${t.driverName}` }));
+    optionize("fuelTripId", items, "-- เลือก Trip --");
+  }
+}
+
+/** ---------- Orders ---------- */
+async function createOrder() {
+  const customerId = document.getElementById("customerId").value;
+  const customerName = (DDL.customers.find(x => x.id === customerId) || {}).name || "";
+  const shipDate = document.getElementById("shipDate").value.trim();
+  const destination = document.getElementById("destination").value.trim();
+  const product = document.getElementById("product").value.trim() || document.getElementById("product").value;
+  const qty = document.getElementById("qty").value;
+  const unit = document.getElementById("unit").value.trim();
+  const pricePerUnit = document.getElementById("ppu").value;
+  const note = document.getElementById("orderNote").value.trim();
+
+  const payload = {
+    customerId, customerName, shipDate,
+    origin: "", destination,
+    product: (DDL.products.find(x => x.id === product)?.name) || product,
+    qty, unit, pricePerUnit, note
+  };
+
+  const encoded = encodeURIComponent(JSON.stringify(payload));
+  const res = await jsonp("createOrder", { payload: encoded });
+
+  if (res.ok) {
+    setMsg("orderMsg", true, `บันทึกสำเร็จ OrderId: <b>${res.orderId}</b>`);
+    await loadOrders();
+    await refreshPickers();
+  } else {
+    setMsg("orderMsg", false, res.error || "บันทึกไม่สำเร็จ");
+  }
+}
+
+async function loadOrders() {
+  const status = document.getElementById("orderStatusFilter").value;
+  const res = await jsonp("listOrders", { status });
+
+  const tb = document.getElementById("ordersTbody");
+  tb.innerHTML = "";
+  if (!res.ok) {
+    tb.innerHTML = `<tr><td colspan="7" class="text-danger">${escapeHtml(res.error || "error")}</td></tr>`;
+    return;
+  }
+
+  res.orders.slice(0,200).forEach(o => {
+    tb.innerHTML += `
+      <tr>
+        <td class="mono">${escapeHtml(o.orderId)}</td>
+        <td>${escapeHtml(o.customerName || "")}</td>
+        <td class="mono">${escapeHtml(o.shipDate || "")}</td>
+        <td>${escapeHtml(o.destination || "")}</td>
+        <td>${escapeHtml(o.product || "")}</td>
+        <td class="text-end">${escapeHtml(o.qty)}</td>
+        <td><span class="badge text-bg-secondary">${escapeHtml(o.status)}</span></td>
+      </tr>
+    `;
+  });
+}
+
+/** ---------- Plan & Assign ---------- */
+async function planOrder() {
+  const orderId = document.getElementById("planOrderId").value;
+  const plannedFuelLiters = document.getElementById("plannedLiters").value;
+  const plannedFuelBudget = document.getElementById("plannedBudget").value;
+
+  const res = await jsonp("planOrder", { orderId, plannedFuelLiters, plannedFuelBudget });
+  if (res.ok) {
+    setMsg("planMsg", true, `บันทึกแผนสำเร็จ OrderId: <b>${orderId}</b>`);
+    await loadOrders();
+    await refreshPickers();
+  } else {
+    setMsg("planMsg", false, res.error || "ไม่สำเร็จ");
+  }
+}
+
+async function assignOrder() {
+  const orderId = document.getElementById("planOrderId").value;
+  const tripDate = document.getElementById("tripDate").value.trim();
+  const truckId = document.getElementById("truckId").value;
+  const driverId = document.getElementById("driverId").value;
+  const note = document.getElementById("assignNote").value.trim();
+
+  const res = await jsonp("assignOrder", { orderId, tripDate, truckId, driverId, note });
+  if (res.ok) {
+    setMsg("planMsg", true, `มอบหมายสำเร็จ TripId: <b>${res.tripId}</b>`);
+    await loadTrips();
+    await refreshPickers();
+    await loadOrders();
+  } else {
+    setMsg("planMsg", false, res.error || "ไม่สำเร็จ");
+  }
+}
+
+async function loadTrips() {
+  const status = document.getElementById("tripStatusFilter").value;
+  const res = await jsonp("listTrips", { status });
+
+  const tb = document.getElementById("tripsTbody");
+  tb.innerHTML = "";
+  if (!res.ok) {
+    tb.innerHTML = `<tr><td colspan="8" class="text-danger">${escapeHtml(res.error || "error")}</td></tr>`;
+    return;
+  }
+
+  res.trips.slice(0,200).forEach(t => {
+    tb.innerHTML += `
+      <tr>
+        <td class="mono">${escapeHtml(t.tripId)}</td>
+        <td class="mono">${escapeHtml(t.orderId)}</td>
+        <td class="mono">${escapeHtml(t.tripDate || "")}</td>
+        <td>${escapeHtml(t.truckName || t.truckId)}</td>
+        <td>${escapeHtml(t.driverName || t.driverId)}</td>
+        <td><span class="badge text-bg-secondary">${escapeHtml(t.status)}</span></td>
+        <td class="text-end">${escapeHtml(t.plannedFuelLiters)}</td>
+        <td class="text-end">${escapeHtml(t.plannedFuelBudget)}</td>
+      </tr>
+    `;
+  });
+}
+
+/** ---------- Fuel ---------- */
+async function fuelReturn() {
+  const tripId = document.getElementById("fuelTripId").value;
+  const fuelDate = document.getElementById("fuelDate").value.trim();
+  const liters = document.getElementById("fuelLiters").value;
+  const pricePerLiter = document.getElementById("fuelPpl").value;
+  const amount = document.getElementById("fuelAmount").value;
+  const note = document.getElementById("fuelNote").value.trim();
+
+  const res = await jsonp("fuelReturn", { tripId, fuelDate, liters, pricePerLiter, amount, note });
+  if (res.ok) {
+    setMsg("fuelMsg", true, `บันทึกน้ำมันสำเร็จ FuelId: <b>${res.fuelId}</b> และปิดงาน TripId: <b>${tripId}</b>`);
+    await loadTrips();
+    await loadOrders();
+    await refreshPickers();
+  } else {
+    setMsg("fuelMsg", false, res.error || "ไม่สำเร็จ");
+  }
+}
+
+/** ---------- Summary ---------- */
+async function loadSummary() {
+  const from = document.getElementById("sumFrom").value.trim();
+  const to = document.getElementById("sumTo").value.trim();
+  const res = await jsonp("summary", { from, to });
+
+  const box = document.getElementById("summaryBox");
+  if (!res.ok) {
+    box.innerHTML = `<div class="alert alert-danger">${escapeHtml(res.error || "error")}</div>`;
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="row g-2">
+      <div class="col-md-4">
+        <div class="card p-3">
+          <div class="small-muted">Fuel liters</div>
+          <div class="fs-3 fw-bold">${Number(res.totalFuelLiters || 0).toFixed(2)}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card p-3">
+          <div class="small-muted">Fuel cost (บาท)</div>
+          <div class="fs-3 fw-bold">${Number(res.totalFuelAmount || 0).toFixed(2)}</div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="fw-bold mb-2">รายละเอียด (byTruck/byDriver/byOrder)</div>
+          <pre class="mb-0">${escapeHtml(JSON.stringify({ byTruck: res.byTruck, byDriver: res.byDriver, byOrder: res.byOrder }, null, 2))}</pre>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/** Auto bootstrap on load (after you set SCRIPT_URL) */
+window.addEventListener("load", () => {
+  // do nothing until user sets SCRIPT_URL
+});
 </script>
+
 </body>
 </html>
