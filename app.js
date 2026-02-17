@@ -1,5 +1,5 @@
 // ====== CONFIG ======
-const API_URL = "https://script.google.com/macros/s/AKfycbxJrdDjdE15Owg8t2jfixrLkXBBVyQQjnmK80KbJf9YSXv-IDPAEzOus95w4hB4EIAi/exec"; // <<<<<< ใส่ของคุณ
+const API_URL = "https://script.google.com/macros/s/AKfycbyFZp2FNtr9s-7WckRB3Oyc7d74wz62YEjTQfU4qWPBD9VK0KXmPK4YYF-TN1rvTXXK/exec"; // <<<<<< ใส่ของคุณ
 
 // ====== helpers ======
 function qs(sel, root=document){ return root.querySelector(sel); }
