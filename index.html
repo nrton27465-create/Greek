@@ -3,522 +3,1071 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transport Office</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { background:#f6f7fb; }
-    .card { border:0; box-shadow: 0 8px 24px rgba(15,23,42,.06); border-radius: 16px; }
-    .nav-pills .nav-link { border-radius: 999px; }
-    .small-muted { font-size:.9rem; color:#64748b; }
-    pre { background:#0b1020; color:#d1e7ff; padding:12px; border-radius:12px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-  </style>
+  <title>Transport Office – ระบบขนส่ง</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Flatpickr calendar -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+
+<style>
+/* ─── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #0d2f5e;
+  --blue:    #1557c0;
+  --blue-m:  #1e6fe0;
+  --sky:     #3b9eff;
+  --ice:     #e8f1fd;
+  --ice2:    #f0f6ff;
+  --white:   #ffffff;
+  --gray-50: #f7f9fc;
+  --gray-100:#eef2f8;
+  --gray-200:#d8e2f0;
+  --gray-400:#8fa6c4;
+  --gray-600:#4f6a8a;
+  --gray-800:#1e3454;
+  --red:     #d63b3b;
+  --green:   #1a8c5c;
+  --amber:   #d67b00;
+  --shadow:  0 1px 3px rgba(13,47,94,.08), 0 4px 16px rgba(13,47,94,.06);
+  --shadow-lg: 0 4px 12px rgba(13,47,94,.12), 0 12px 40px rgba(13,47,94,.10);
+  --radius:  10px;
+  --radius-lg: 16px;
+  --sidebar: 220px;
+  --font: 'IBM Plex Sans Thai', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+
+html, body { height: 100%; font-family: var(--font); font-size: 14px; color: var(--gray-800); background: var(--gray-50); }
+
+/* ─── Layout ────────────────────────────────────────────────── */
+.app-shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* ─── Sidebar ───────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar);
+  flex-shrink: 0;
+  background: var(--navy);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-logo {
+  padding: 22px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.logo-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.logo-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .02em;
+  margin-top: 8px;
+}
+.logo-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  margin-top: 2px;
+  letter-spacing: .03em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255,255,255,.60);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background .15s, color .15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); }
+.nav-item.active { background: var(--blue-m); color: #fff; }
+.nav-icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
+
+.sidebar-footer {
+  padding: 14px 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.btn-refresh {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.09);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.75);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-refresh:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+/* ─── Main area ─────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  height: 56px;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.topbar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.topbar-sub {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-left: 2px;
+}
+.topbar-spacer { flex: 1; }
+.topbar-time {
+  font-size: 12px;
+  color: var(--gray-400);
+  font-family: var(--mono);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+/* ─── Cards ─────────────────────────────────────────────────── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.card-header {
+  padding: 18px 22px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.card-body { padding: 16px 22px 20px; }
+.card-body + .card-body { padding-top: 0; }
+
+.section-gap { margin-bottom: 18px; }
+
+/* ─── Form elements ─────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  gap: 12px 16px;
+}
+.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+.col-span-4 { grid-column: span 4; }
+
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.form-control, .form-select {
+  padding: 8px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: var(--gray-800);
+  background: var(--white);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--blue-m);
+  box-shadow: 0 0 0 3px rgba(30,111,224,.12);
+}
+.form-control::placeholder { color: var(--gray-400); }
+
+/* Flatpickr date input styling */
+.form-control.flatpickr-input { cursor: pointer; }
+
+/* ─── Buttons ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s, transform .1s;
+  border: none;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(21,87,192,.30);
+}
+.btn-primary:hover { background: var(--blue-m); box-shadow: 0 4px 12px rgba(21,87,192,.40); }
+.btn-outline {
+  background: transparent;
+  color: var(--blue);
+  border: 1.5px solid var(--blue);
+}
+.btn-outline:hover { background: var(--ice); }
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+}
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-full { width: 100%; }
+.align-btn { align-self: flex-end; }
+
+/* ─── Tables ─────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--gray-50); border-bottom: 2px solid var(--gray-200); }
+th {
+  padding: 9px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-align: left;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-800);
+  vertical-align: middle;
+}
+tbody tr:hover { background: var(--ice2); }
+tbody tr:last-child td { border-bottom: none; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+
+/* ─── Badges ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.badge-new     { background: #e8f4ff; color: #0369a1; }
+.badge-planned { background: #fef3c7; color: #92400e; }
+.badge-assigned{ background: #ede9fe; color: #5b21b6; }
+.badge-inprogress { background: #dbeafe; color: #1d4ed8; }
+.badge-delivered{ background: #d1fae5; color: #065f46; }
+.badge-closed  { background: #f1f5f9; color: #475569; }
+
+/* ─── Alert / toast ──────────────────────────────────────────── */
+.msg { margin-top: 14px; }
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.alert-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+/* ─── Stat cards (summary) ───────────────────────────────────── */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 18px; }
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+.stat-label { font-size: 11px; font-weight: 700; color: var(--gray-400); letter-spacing: .06em; text-transform: uppercase; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--navy); margin-top: 6px; font-family: var(--mono); }
+.stat-unit  { font-size: 12px; color: var(--gray-400); font-family: var(--font); font-weight: 400; margin-left: 4px; }
+
+/* ─── Mono / code text ───────────────────────────────────────── */
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.pre-box {
+  background: #0f1f38;
+  color: #a8d0ff;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+/* ─── Filter row ─────────────────────────────────────────────── */
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.filter-row .card-title { margin: 0; }
+.filter-select {
+  padding: 5px 10px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 12.5px;
+  color: var(--gray-800);
+  background: var(--white);
+  outline: none;
+  cursor: pointer;
+}
+.filter-select:focus { border-color: var(--blue-m); }
+
+/* ─── Divider inside card ────────────────────────────────────── */
+.card-divider {
+  border: none;
+  border-top: 1px solid var(--gray-100);
+  margin: 4px 0;
+}
+
+/* ─── Section label ──────────────────────────────────────────── */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 0 22px 12px;
+}
+
+/* ─── Setup alert ────────────────────────────────────────────── */
+.setup-alert {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #78350f;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.setup-alert code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: rgba(0,0,0,.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+/* ─── Flatpickr override ─────────────────────────────────────── */
+.flatpickr-calendar { font-family: var(--font) !important; border-radius: 12px !important; box-shadow: var(--shadow-lg) !important; border: 1px solid var(--gray-200) !important; }
+.flatpickr-day.selected, .flatpickr-day.selected:hover { background: var(--blue) !important; border-color: var(--blue) !important; }
+.flatpickr-day:hover { background: var(--ice) !important; }
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg { fill: var(--blue) !important; }
+</style>
 </head>
 <body>
-<div class="container py-4">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <h3 class="mb-0">🚚 Transport Office</h3>
-      <div class="small-muted">รับออเดอร์ → วางแผน(น้ำมัน) → มอบหมาย → เติมน้ำมันกลับ → สรุปต้นทุน</div>
-    </div>
-    <button class="btn btn-outline-primary" onclick="bootstrap()">รีเฟรชข้อมูล</button>
-  </div>
+<div class="app-shell">
 
-  <div class="alert alert-warning">
-    <div class="fw-bold">ตั้งค่า SCRIPT_URL ก่อนใช้งาน</div>
-    <div class="small">เปิดไฟล์นี้ แล้วแก้ค่า <span class="mono">https://script.google.com/macros/s/AKfycbxGvujKNpCVq5V0kIFGHcKYLZU6p5GdiHMeUWFHsLfrS-MHNgrrjjPEHF2EuPCXn-CK/exec</span> ให้เป็นลิงก์ Deploy ของ Apps Script</div>
-  </div>
-
-  <ul class="nav nav-pills gap-2 mb-3" id="tabs">
-    <li class="nav-item"><button class="nav-link active" data-tab="tabOrder">1) รับออเดอร์</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="tabPlan">2) วางแผน/มอบหมาย</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="tabFuel">3) เติมน้ำมันกลับ</button></li>
-    <li class="nav-item"><button class="nav-link" data-tab="tabSummary">4) สรุปต้นทุน</button></li>
-  </ul>
-
-  <!-- TAB 1: Orders -->
-  <div id="tabOrder" class="tab-pane">
-    <div class="card p-3 mb-3">
-      <h5 class="mb-3">📥 รับออเดอร์</h5>
-      <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label">ลูกค้า</label>
-          <select id="customerId" class="form-select"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">วันส่ง (YYYY-MM-DD)</label>
-          <input id="shipDate" class="form-control" placeholder="2026-02-17">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">จุดส่ง</label>
-          <input id="destination" class="form-control" placeholder="เช่น โคราช / โรงงาน A">
-        </div>
-
-        <div class="col-md-4">
-          <label class="form-label">สินค้า</label>
-          <select id="product" class="form-select"></select>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">จำนวน</label>
-          <input id="qty" class="form-control" type="number" step="0.01" placeholder="เช่น 30">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">หน่วย</label>
-          <input id="unit" class="form-control" value="ตัน">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">ราคาต่อหน่วย</label>
-          <input id="ppu" class="form-control" type="number" step="0.01" placeholder="0 = ไม่บังคับ">
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary w-100" onclick="createOrder()">บันทึกออเดอร์</button>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label">หมายเหตุ</label>
-          <input id="orderNote" class="form-control" placeholder="เช่น ส่งด่วน / โทรก่อนถึง">
-        </div>
-      </div>
-      <div id="orderMsg" class="mt-3"></div>
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🚚</div>
+      <div class="logo-title">Transport Office</div>
+      <div class="logo-sub">ระบบจัดการขนส่ง</div>
     </div>
 
-    <div class="card p-3">
-      <div class="d-flex align-items-center justify-content-between">
-        <h5 class="mb-0">รายการออเดอร์</h5>
-        <select id="orderStatusFilter" class="form-select" style="max-width:220px" onchange="loadOrders()">
-          <option value="">ทั้งหมด</option>
-          <option value="NEW">NEW</option>
-          <option value="PLANNED">PLANNED</option>
-          <option value="ASSIGNED">ASSIGNED</option>
-          <option value="CLOSED">CLOSED</option>
-        </select>
-      </div>
-      <div class="table-responsive mt-2">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>OrderId</th><th>ลูกค้า</th><th>วันส่ง</th><th>จุดส่ง</th><th>สินค้า</th><th class="text-end">จำนวน</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="ordersTbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 2: Plan/Assign -->
-  <div id="tabPlan" class="tab-pane d-none">
-    <div class="card p-3 mb-3">
-      <h5 class="mb-3">🗺️ วางแผน (กำหนดน้ำมัน) + 👨‍✈️ มอบหมาย</h5>
-      <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label">เลือก OrderId</label>
-          <select id="planOrderId" class="form-select"></select>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">น้ำมันที่วางแผน (ลิตร)</label>
-          <input id="plannedLiters" class="form-control" type="number" step="0.01">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">งบน้ำมัน (บาท)</label>
-          <input id="plannedBudget" class="form-control" type="number" step="0.01">
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn btn-outline-primary w-100" onclick="planOrder()">บันทึกแผน</button>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">วันที่ออกวิ่ง</label>
-          <input id="tripDate" class="form-control" placeholder="2026-02-17">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">รถ</label>
-          <select id="truckId" class="form-select"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">คนขับ</label>
-          <select id="driverId" class="form-select"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">หมายเหตุ (มอบหมาย)</label>
-          <input id="assignNote" class="form-control" placeholder="เช่น เส้นทาง/เบอร์ติดต่อ">
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary w-100" onclick="assignOrder()">มอบหมาย</button>
-        </div>
-      </div>
-      <div id="planMsg" class="mt-3"></div>
+    <div class="sidebar-nav">
+      <button class="nav-item active" data-tab="tabOrder">
+        <span class="nav-icon">📥</span> รับออเดอร์
+      </button>
+      <button class="nav-item" data-tab="tabPlan">
+        <span class="nav-icon">🗺️</span> วางแผน / มอบหมาย
+      </button>
+      <button class="nav-item" data-tab="tabFuel">
+        <span class="nav-icon">⛽</span> บันทึกน้ำมัน
+      </button>
+      <button class="nav-item" data-tab="tabSummary">
+        <span class="nav-icon">📊</span> สรุปต้นทุน
+      </button>
     </div>
 
-    <div class="card p-3">
-      <div class="d-flex align-items-center justify-content-between">
-        <h5 class="mb-0">รายการ Trips</h5>
-        <select id="tripStatusFilter" class="form-select" style="max-width:220px" onchange="loadTrips()">
-          <option value="">ทั้งหมด</option>
-          <option value="ASSIGNED">ASSIGNED</option>
-          <option value="DELIVERED">DELIVERED</option>
-          <option value="CLOSED">CLOSED</option>
-        </select>
-      </div>
-      <div class="table-responsive mt-2">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>TripId</th><th>OrderId</th><th>วันที่</th><th>รถ</th><th>คนขับ</th><th>Status</th>
-              <th class="text-end">Plan Liters</th><th class="text-end">Plan Budget</th>
-            </tr>
-          </thead>
-          <tbody id="tripsTbody"></tbody>
-        </table>
-      </div>
+    <div class="sidebar-footer">
+      <button class="btn-refresh" onclick="loadAll()">
+        <span>↻</span> รีเฟรชข้อมูล
+      </button>
     </div>
-  </div>
+  </nav>
 
-  <!-- TAB 3: Fuel -->
-  <div id="tabFuel" class="tab-pane d-none">
-    <div class="card p-3 mb-3">
-      <h5 class="mb-3">⛽ บันทึกเติมน้ำมัน (ตอนกลับ)</h5>
-      <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label">เลือก TripId</label>
-          <select id="fuelTripId" class="form-select"></select>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">วันที่เติม</label>
-          <input id="fuelDate" class="form-control" placeholder="2026-02-17">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">ลิตร</label>
-          <input id="fuelLiters" class="form-control" type="number" step="0.01">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">บาท/ลิตร</label>
-          <input id="fuelPpl" class="form-control" type="number" step="0.01">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">ยอดเงิน (ถ้าเว้นว่างจะคำนวณให้)</label>
-          <input id="fuelAmount" class="form-control" type="number" step="0.01">
-        </div>
-        <div class="col-12">
-          <label class="form-label">หมายเหตุ</label>
-          <input id="fuelNote" class="form-control" placeholder="เช่น เติมปั๊มไหน / ใบเสร็จเลขที่...">
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary w-100" onclick="fuelReturn()">บันทึก + ปิดงาน</button>
-        </div>
-      </div>
-      <div id="fuelMsg" class="mt-3"></div>
-    </div>
-  </div>
+  <!-- ── Main ── -->
+  <div class="main">
 
-  <!-- TAB 4: Summary -->
-  <div id="tabSummary" class="tab-pane d-none">
-    <div class="card p-3">
-      <h5 class="mb-3">📊 สรุปต้นทุน (น้ำมัน)</h5>
-      <div class="row g-2 align-items-end">
-        <div class="col-md-3">
-          <label class="form-label">ตั้งแต่ (YYYY-MM-DD)</label>
-          <input id="sumFrom" class="form-control" placeholder="2026-02-01">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">ถึง (YYYY-MM-DD)</label>
-          <input id="sumTo" class="form-control" placeholder="2026-02-28">
-        </div>
-        <div class="col-md-2">
-          <button class="btn btn-primary w-100" onclick="loadSummary()">สรุป</button>
-        </div>
+    <!-- Topbar -->
+    <header class="topbar">
+      <span class="topbar-title" id="topbarTitle">รับออเดอร์</span>
+      <span class="topbar-sub" id="topbarSub">บันทึกคำสั่งจัดส่งจากลูกค้า</span>
+      <span class="topbar-spacer"></span>
+      <span class="topbar-time" id="clockEl"></span>
+    </header>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Setup warning -->
+      <div class="setup-alert" id="setupAlert">
+        ⚠️ <div>กรุณาแก้ไขตัวแปร <code>SCRIPT_URL</code> ในไฟล์นี้ให้เป็นลิงก์ <code>/exec</code> ที่ได้จาก Google Apps Script Deploy ก่อนใช้งาน</div>
       </div>
 
-      <div id="summaryBox" class="mt-3"></div>
-    </div>
-  </div>
+      <!-- ── TAB 1: Orders ── -->
+      <div id="tabOrder" class="tab-pane">
+        <!-- Form card -->
+        <div class="card section-gap">
+          <div class="card-header">
+            <span>📥</span>
+            <span class="card-title">บันทึกออเดอร์ใหม่</span>
+          </div>
+          <div class="card-body">
+            <div class="form-grid cols-4">
+              <div class="form-group col-span-2">
+                <label class="form-label">ลูกค้า</label>
+                <select id="customerId" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">วันที่ส่ง</label>
+                <input id="shipDate" class="form-control date-picker" placeholder="เลือกวันที่" readonly>
+              </div>
+              <div class="form-group">
+                <label class="form-label">จุดส่ง (ปลายทาง)</label>
+                <input id="destination" class="form-control" placeholder="เช่น โคราช / โรงงาน A">
+              </div>
 
-</div>
+              <div class="form-group col-span-2">
+                <label class="form-label">สินค้า</label>
+                <select id="product" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">จำนวน</label>
+                <input id="qty" class="form-control" type="number" step="0.01" placeholder="เช่น 30">
+              </div>
+              <div class="form-group">
+                <label class="form-label">หน่วย</label>
+                <input id="unit" class="form-control" value="ตัน">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">ราคา / หน่วย (บาท)</label>
+                <input id="ppu" class="form-control" type="number" step="0.01" placeholder="0 = ข้ามได้">
+              </div>
+              <div class="form-group col-span-2">
+                <label class="form-label">หมายเหตุ</label>
+                <input id="orderNote" class="form-control" placeholder="เช่น ส่งด่วน / โทรก่อนถึง">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary" onclick="createOrder()">
+                  + บันทึกออเดอร์
+                </button>
+              </div>
+            </div>
+            <div class="msg" id="orderMsg"></div>
+          </div>
+        </div>
+
+        <!-- Orders list -->
+        <div class="card">
+          <div class="card-header">
+            <div class="filter-row" style="width:100%">
+              <span class="card-title">รายการออเดอร์</span>
+              <select id="orderStatusFilter" class="filter-select" onchange="loadOrders()">
+                <option value="">ทั้งหมด</option>
+                <option value="NEW">NEW</option>
+                <option value="PLANNED">PLANNED</option>
+                <option value="ASSIGNED">ASSIGNED</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>ลูกค้า</th>
+                    <th>วันส่ง</th>
+                    <th>ปลายทาง</th>
+                    <th>สินค้า</th>
+                    <th class="text-right">จำนวน</th>
+                    <th class="text-right">ราคารวม</th>
+                    <th class="text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTbody">
+                  <tr><td colspan="8" class="text-center" style="color:var(--gray-400);padding:24px">กำลังโหลด...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 2: Plan / Assign ── -->
+      <div id="tabPlan" class="tab-pane" style="display:none">
+        <div class="card section-gap">
+          <div class="card-header"><span>🗺️</span><span class="card-title">วางแผนน้ำมัน</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-4">
+              <div class="form-group col-span-2">
+                <label class="form-label">เลือก Order</label>
+                <select id="planOrderId" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">น้ำมันที่วางแผน (ลิตร)</label>
+                <input id="plannedLiters" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">งบน้ำมัน (บาท)</label>
+                <input id="plannedBudget" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group align-btn col-span-4" style="align-items:flex-start">
+                <button class="btn btn-outline" onclick="planOrder()">💾 บันทึกแผน</button>
+              </div>
+            </div>
+          </div>
+
+          <hr class="card-divider">
+          <div class="section-label">มอบหมายงาน</div>
+
+          <div class="card-body" style="padding-top:0">
+            <div class="form-grid cols-4">
+              <div class="form-group">
+                <label class="form-label">วันที่ออกวิ่ง</label>
+                <input id="tripDate" class="form-control date-picker" placeholder="เลือกวันที่" readonly>
+              </div>
+              <div class="form-group col-span-2">
+                <label class="form-label">รถ</label>
+                <select id="truckId" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">คนขับ</label>
+                <select id="driverId" class="form-select"></select>
+              </div>
+              <div class="form-group col-span-3">
+                <label class="form-label">หมายเหตุ (มอบหมาย)</label>
+                <input id="assignNote" class="form-control" placeholder="เช่น เส้นทาง / เบอร์ติดต่อ">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary btn-full" onclick="assignOrder()">✓ มอบหมาย</button>
+              </div>
+            </div>
+            <div class="msg" id="planMsg"></div>
+          </div>
+        </div>
+
+        <!-- Trips list -->
+        <div class="card">
+          <div class="card-header">
+            <div class="filter-row" style="width:100%">
+              <span class="card-title">รายการ Trips</span>
+              <select id="tripStatusFilter" class="filter-select" onchange="loadTrips()">
+                <option value="">ทั้งหมด</option>
+                <option value="ASSIGNED">ASSIGNED</option>
+                <option value="DELIVERED">DELIVERED</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Trip ID</th>
+                    <th>Order ID</th>
+                    <th>วันที่</th>
+                    <th>รถ</th>
+                    <th>คนขับ</th>
+                    <th class="text-right">Plan Liters</th>
+                    <th class="text-right">Plan Budget</th>
+                    <th class="text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tripsTbody">
+                  <tr><td colspan="8" class="text-center" style="color:var(--gray-400);padding:24px">กำลังโหลด...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 3: Fuel ── -->
+      <div id="tabFuel" class="tab-pane" style="display:none">
+        <div class="card">
+          <div class="card-header"><span>⛽</span><span class="card-title">บันทึกเติมน้ำมัน (ตอนกลับ) – ปิดงาน</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-4">
+              <div class="form-group col-span-2">
+                <label class="form-label">เลือก Trip</label>
+                <select id="fuelTripId" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">วันที่เติม</label>
+                <input id="fuelDate" class="form-control date-picker" placeholder="เลือกวันที่" readonly>
+              </div>
+              <div class="form-group"><!-- spacer --></div>
+
+              <div class="form-group">
+                <label class="form-label">ลิตร</label>
+                <input id="fuelLiters" class="form-control" type="number" step="0.01" placeholder="0.00" oninput="calcFuelAmt()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">บาท / ลิตร</label>
+                <input id="fuelPpl" class="form-control" type="number" step="0.01" placeholder="0.00" oninput="calcFuelAmt()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ยอดเงินรวม (บาท)</label>
+                <input id="fuelAmount" class="form-control" type="number" step="0.01" placeholder="คำนวณอัตโนมัติ">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary btn-full" onclick="fuelReturn()">✓ บันทึก + ปิดงาน</button>
+              </div>
+
+              <div class="form-group col-span-4">
+                <label class="form-label">หมายเหตุ</label>
+                <input id="fuelNote" class="form-control" placeholder="เช่น เติมปั๊ม PTT / ใบเสร็จเลขที่...">
+              </div>
+            </div>
+            <div class="msg" id="fuelMsg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 4: Summary ── -->
+      <div id="tabSummary" class="tab-pane" style="display:none">
+        <div class="card section-gap">
+          <div class="card-header"><span>📊</span><span class="card-title">สรุปต้นทุนน้ำมัน</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-4">
+              <div class="form-group">
+                <label class="form-label">ตั้งแต่วันที่</label>
+                <input id="sumFrom" class="form-control date-picker" placeholder="เลือกวันที่เริ่ม" readonly>
+              </div>
+              <div class="form-group">
+                <label class="form-label">ถึงวันที่</label>
+                <input id="sumTo" class="form-control date-picker" placeholder="เลือกวันที่สิ้นสุด" readonly>
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary" onclick="loadSummary()">ดูสรุป</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="summaryBox"></div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app-shell -->
 
 <script>
-/** 👉 ใส่ URL ตอน Deploy Apps Script (ลงท้ายด้วย /exec) */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4Z0Y2427LCdCveC2z9Efs8A6Ql7ZJXbu1e2zAwzAE_u1ItBqF9w0eOHYg4PW9cJP/exec";
+/* ─────────────────────────────────────────────────────────────
+   🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
+   ───────────────────────────────────────────────────────────── */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcZ1-wcQzti1P7RkBFWB1mT1cf1AG_4DIo3jZBOGnyJQAbOmRQcu3imdEbLtmjSVLw/exec";
 
-/** ---------- JSONP helper ---------- */
+/* ─── Tabs ──────────────────────────────────────────────────── */
+const TAB_META = {
+  tabOrder:   { title: "รับออเดอร์",       sub: "บันทึกคำสั่งจัดส่งจากลูกค้า" },
+  tabPlan:    { title: "วางแผน / มอบหมาย", sub: "กำหนดน้ำมันและมอบหมายรถ-คนขับ" },
+  tabFuel:    { title: "บันทึกน้ำมัน",      sub: "บันทึกการเติมน้ำมันและปิดงาน" },
+  tabSummary: { title: "สรุปต้นทุน",        sub: "รายงานค่าน้ำมันแยกรถ / คนขับ / Order" }
+};
+
+document.querySelectorAll(".nav-item[data-tab]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach(x => x.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".tab-pane").forEach(p => p.style.display = "none");
+    document.getElementById(tab).style.display = "";
+    document.getElementById("topbarTitle").textContent = TAB_META[tab].title;
+    document.getElementById("topbarSub").textContent   = TAB_META[tab].sub;
+  });
+});
+
+/* ─── Clock ─────────────────────────────────────────────────── */
+function updateClock() {
+  document.getElementById("clockEl").textContent =
+    new Date().toLocaleString("th-TH", { timeZone:"Asia/Bangkok",
+      year:"numeric", month:"2-digit", day:"2-digit",
+      hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ─── Date pickers ──────────────────────────────────────────── */
+function initDatePickers() {
+  document.querySelectorAll(".date-picker").forEach(el => {
+    if (el._fp) return; // already init
+    el._fp = flatpickr(el, {
+      dateFormat: "Y-m-d",
+      allowInput: false,
+      disableMobile: true,
+      locale: "th"
+    });
+  });
+}
+
+/* ─── JSONP helper ──────────────────────────────────────────── */
 function jsonp(action, params = {}) {
   return new Promise((resolve, reject) => {
-    const cb = "cb_" + Math.random().toString(36).slice(2);
+    const cb  = "cb_" + Math.random().toString(36).slice(2);
     const url = new URL(SCRIPT_URL);
     url.searchParams.set("action", action);
     url.searchParams.set("callback", cb);
-
-    Object.keys(params).forEach(k => {
-      if (params[k] !== undefined && params[k] !== null) {
-        url.searchParams.set(k, params[k]);
-      }
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) url.searchParams.set(k, v);
     });
 
     const script = document.createElement("script");
     script.src = url.toString();
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("JSONP request failed"));
-    };
-
-    window[cb] = (data) => {
-      cleanup();
-      resolve(data);
-    };
-
-    function cleanup() {
-      delete window[cb];
-      script.remove();
-    }
-
+    script.onerror = () => { cleanup(); reject(new Error("JSONP failed")); };
+    window[cb] = data => { cleanup(); resolve(data); };
+    function cleanup() { delete window[cb]; script.remove(); }
     document.body.appendChild(script);
   });
 }
 
-/** ---------- UI helpers ---------- */
-function setMsg(id, ok, text) {
+/* ─── Helpers ───────────────────────────────────────────────── */
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, m =>
+    ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
+}
+
+function setMsg(id, ok, html) {
   document.getElementById(id).innerHTML =
-    `<div class="alert ${ok ? "alert-success" : "alert-danger"} mb-0">${text}</div>`;
+    `<div class="alert ${ok ? "alert-success" : "alert-danger"}">${ok?"✓":"✗"} ${html}</div>`;
 }
 
-function optionize(selectId, items, placeholder="-- เลือก --") {
+function badgeClass(status) {
+  const map = {
+    NEW:"badge-new", PLANNED:"badge-planned", ASSIGNED:"badge-assigned",
+    IN_PROGRESS:"badge-inprogress", DELIVERED:"badge-delivered", CLOSED:"badge-closed"
+  };
+  return "badge " + (map[String(status).toUpperCase()] || "badge-closed");
+}
+
+function optionize(selectId, items, placeholder = "-- เลือก --") {
   const el = document.getElementById(selectId);
-  el.innerHTML = `<option value="">${placeholder}</option>` +
-    items.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} (${escapeHtml(x.id)})</option>`).join("");
+  el.innerHTML = `<option value="">${esc(placeholder)}</option>` +
+    items.map(x => `<option value="${esc(x.id)}">${esc(x.name)} &nbsp;(${esc(x.id)})</option>`).join("");
 }
 
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
+function numFmt(v) {
+  const n = Number(v);
+  return isNaN(n) ? "-" : n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-/** ---------- Tabs ---------- */
-document.querySelectorAll("#tabs .nav-link").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll("#tabs .nav-link").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    const tab = btn.dataset.tab;
-    document.querySelectorAll(".tab-pane").forEach(p => p.classList.add("d-none"));
-    document.getElementById(tab).classList.remove("d-none");
-  });
-});
+function calcFuelAmt() {
+  const l   = parseFloat(document.getElementById("fuelLiters").value) || 0;
+  const ppl = parseFloat(document.getElementById("fuelPpl").value)    || 0;
+  if (l && ppl) document.getElementById("fuelAmount").value = (l * ppl).toFixed(2);
+}
 
-/** ---------- App state ---------- */
+/* ─── App state ─────────────────────────────────────────────── */
 let DDL = { drivers:[], trucks:[], customers:[], products:[] };
 
-/** ---------- Load bootstrap ---------- */
-async function bootstrap() {
+/* ─── Bootstrap ─────────────────────────────────────────────── */
+async function loadAll() {
+  const setupAlert = document.getElementById("setupAlert");
   if (!SCRIPT_URL || SCRIPT_URL.includes("PASTE_")) {
-    alert("กรุณาแก้ SCRIPT_URL ให้เป็นลิงก์ /exec จาก Apps Script ก่อน");
+    setupAlert.style.display = "flex";
     return;
   }
-  const data = await jsonp("bootstrap");
-  if (!data.ok) { alert(data.error || "bootstrap error"); return; }
+  setupAlert.style.display = "none";
 
-  DDL = data.ddl;
+  try {
+    const data = await jsonp("bootstrap");
+    if (!data.ok) { alert("bootstrap error: " + (data.error || "")); return; }
 
-  optionize("customerId", DDL.customers, "-- เลือกลูกค้า --");
-  optionize("product", DDL.products, "-- เลือกสินค้า --");
+    DDL = data.ddl;
+    optionize("customerId", DDL.customers, "-- เลือกลูกค้า --");
+    optionize("product",    DDL.products,  "-- เลือกสินค้า --");
+    optionize("truckId",    DDL.trucks,    "-- เลือกรถ --");
+    optionize("driverId",   DDL.drivers,   "-- เลือกคนขับ --");
 
-  optionize("truckId", DDL.trucks, "-- เลือกรถ --");
-  optionize("driverId", DDL.drivers, "-- เลือกคนขับ --");
-
-  await loadOrders();
-  await loadTrips();
-  await refreshPickers();
+    await Promise.all([loadOrders(), loadTrips(), refreshPickers()]);
+  } catch(e) {
+    console.error(e);
+    alert("Connection error: " + e.message);
+  }
 }
 
 async function refreshPickers() {
-  // Orders for planning
-  const orders = await jsonp("listOrders", { status: "" });
-  if (orders.ok) {
-    const items = orders.orders.map(o => ({ id: o.orderId, name: `${o.orderId} | ${o.customerName} | ${o.shipDate} | ${o.status}` }));
+  const [ordersRes, tripsRes] = await Promise.all([
+    jsonp("listOrders", { status: "" }),
+    jsonp("listTrips",  { status: "ASSIGNED" })
+  ]);
+
+  if (ordersRes.ok) {
+    const items = ordersRes.orders.map(o => ({
+      id:   o.orderId,
+      name: `${o.orderId}  |  ${o.customerName}  |  ${o.shipDate}  |  ${o.status}`
+    }));
     optionize("planOrderId", items, "-- เลือก Order --");
   }
-  // Trips for fuel
-  const trips = await jsonp("listTrips", { status: "ASSIGNED" });
-  if (trips.ok) {
-    const items = trips.trips.map(t => ({ id: t.tripId, name: `${t.tripId} | ${t.orderId} | ${t.truckName} | ${t.driverName}` }));
+
+  if (tripsRes.ok) {
+    const items = tripsRes.trips.map(t => ({
+      id:   t.tripId,
+      name: `${t.tripId}  |  ${t.orderId}  |  ${t.truckName}  |  ${t.driverName}`
+    }));
     optionize("fuelTripId", items, "-- เลือก Trip --");
   }
 }
 
-/** ---------- Orders ---------- */
+/* ─── Orders ────────────────────────────────────────────────── */
 async function createOrder() {
-  const customerId = document.getElementById("customerId").value;
+  const customerId   = document.getElementById("customerId").value;
   const customerName = (DDL.customers.find(x => x.id === customerId) || {}).name || "";
-  const shipDate = document.getElementById("shipDate").value.trim();
-  const destination = document.getElementById("destination").value.trim();
-  const product = document.getElementById("product").value.trim() || document.getElementById("product").value;
-  const qty = document.getElementById("qty").value;
-  const unit = document.getElementById("unit").value.trim();
+  const shipDate     = document.getElementById("shipDate").value.trim();
+  const destination  = document.getElementById("destination").value.trim();
+  const productId    = document.getElementById("product").value;
+  const productName  = (DDL.products.find(x => x.id === productId) || {}).name || productId;
+  const qty          = document.getElementById("qty").value;
+  const unit         = document.getElementById("unit").value.trim();
   const pricePerUnit = document.getElementById("ppu").value;
-  const note = document.getElementById("orderNote").value.trim();
+  const note         = document.getElementById("orderNote").value.trim();
 
-  const payload = {
-    customerId, customerName, shipDate,
-    origin: "", destination,
-    product: (DDL.products.find(x => x.id === product)?.name) || product,
-    qty, unit, pricePerUnit, note
-  };
-
+  const payload = { customerId, customerName, shipDate, origin: "",
+                    destination, product: productName, qty, unit, pricePerUnit, note };
   const encoded = encodeURIComponent(JSON.stringify(payload));
-  const res = await jsonp("createOrder", { payload: encoded });
+  const res     = await jsonp("createOrder", { payload: encoded });
 
   if (res.ok) {
-    setMsg("orderMsg", true, `บันทึกสำเร็จ OrderId: <b>${res.orderId}</b>`);
+    setMsg("orderMsg", true, `บันทึกสำเร็จ Order ID: <b>${esc(res.orderId)}</b>`);
     await loadOrders();
     await refreshPickers();
   } else {
-    setMsg("orderMsg", false, res.error || "บันทึกไม่สำเร็จ");
+    setMsg("orderMsg", false, esc(res.error || "บันทึกไม่สำเร็จ"));
   }
 }
 
 async function loadOrders() {
   const status = document.getElementById("orderStatusFilter").value;
-  const res = await jsonp("listOrders", { status });
+  const res    = await jsonp("listOrders", { status });
+  const tb     = document.getElementById("ordersTbody");
 
-  const tb = document.getElementById("ordersTbody");
-  tb.innerHTML = "";
   if (!res.ok) {
-    tb.innerHTML = `<tr><td colspan="7" class="text-danger">${escapeHtml(res.error || "error")}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="8" class="text-center" style="color:var(--red)">${esc(res.error || "error")}</td></tr>`;
     return;
   }
 
-  res.orders.slice(0,200).forEach(o => {
-    tb.innerHTML += `
-      <tr>
-        <td class="mono">${escapeHtml(o.orderId)}</td>
-        <td>${escapeHtml(o.customerName || "")}</td>
-        <td class="mono">${escapeHtml(o.shipDate || "")}</td>
-        <td>${escapeHtml(o.destination || "")}</td>
-        <td>${escapeHtml(o.product || "")}</td>
-        <td class="text-end">${escapeHtml(o.qty)}</td>
-        <td><span class="badge text-bg-secondary">${escapeHtml(o.status)}</span></td>
-      </tr>
-    `;
-  });
+  if (!res.orders.length) {
+    tb.innerHTML = `<tr><td colspan="8" class="text-center" style="color:var(--gray-400);padding:24px">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = res.orders.slice(0, 200).map(o => `
+    <tr>
+      <td class="mono">${esc(o.orderId)}</td>
+      <td>${esc(o.customerName)}</td>
+      <td class="mono">${esc(o.shipDate)}</td>
+      <td>${esc(o.destination)}</td>
+      <td>${esc(o.product)}</td>
+      <td class="text-right">${esc(o.qty)} <small style="color:var(--gray-400)">${esc(o.unit)}</small></td>
+      <td class="text-right mono">${numFmt(o.totalPrice)}</td>
+      <td class="text-center"><span class="${badgeClass(o.status)}">${esc(o.status)}</span></td>
+    </tr>
+  `).join("");
 }
 
-/** ---------- Plan & Assign ---------- */
+/* ─── Plan & Assign ─────────────────────────────────────────── */
 async function planOrder() {
-  const orderId = document.getElementById("planOrderId").value;
+  const orderId          = document.getElementById("planOrderId").value;
   const plannedFuelLiters = document.getElementById("plannedLiters").value;
   const plannedFuelBudget = document.getElementById("plannedBudget").value;
+  const res              = await jsonp("planOrder", { orderId, plannedFuelLiters, plannedFuelBudget });
 
-  const res = await jsonp("planOrder", { orderId, plannedFuelLiters, plannedFuelBudget });
   if (res.ok) {
-    setMsg("planMsg", true, `บันทึกแผนสำเร็จ OrderId: <b>${orderId}</b>`);
+    setMsg("planMsg", true, `บันทึกแผนสำเร็จ Order: <b>${esc(orderId)}</b>`);
     await loadOrders();
     await refreshPickers();
   } else {
-    setMsg("planMsg", false, res.error || "ไม่สำเร็จ");
+    setMsg("planMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
 }
 
 async function assignOrder() {
-  const orderId = document.getElementById("planOrderId").value;
+  const orderId  = document.getElementById("planOrderId").value;
   const tripDate = document.getElementById("tripDate").value.trim();
-  const truckId = document.getElementById("truckId").value;
+  const truckId  = document.getElementById("truckId").value;
   const driverId = document.getElementById("driverId").value;
-  const note = document.getElementById("assignNote").value.trim();
+  const note     = document.getElementById("assignNote").value.trim();
+  const res      = await jsonp("assignOrder", { orderId, tripDate, truckId, driverId, note });
 
-  const res = await jsonp("assignOrder", { orderId, tripDate, truckId, driverId, note });
   if (res.ok) {
-    setMsg("planMsg", true, `มอบหมายสำเร็จ TripId: <b>${res.tripId}</b>`);
-    await loadTrips();
-    await refreshPickers();
-    await loadOrders();
+    setMsg("planMsg", true, `มอบหมายสำเร็จ Trip ID: <b>${esc(res.tripId)}</b>`);
+    await Promise.all([loadTrips(), loadOrders(), refreshPickers()]);
   } else {
-    setMsg("planMsg", false, res.error || "ไม่สำเร็จ");
+    setMsg("planMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
 }
 
 async function loadTrips() {
   const status = document.getElementById("tripStatusFilter").value;
-  const res = await jsonp("listTrips", { status });
+  const res    = await jsonp("listTrips", { status });
+  const tb     = document.getElementById("tripsTbody");
 
-  const tb = document.getElementById("tripsTbody");
-  tb.innerHTML = "";
   if (!res.ok) {
-    tb.innerHTML = `<tr><td colspan="8" class="text-danger">${escapeHtml(res.error || "error")}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="8" class="text-center" style="color:var(--red)">${esc(res.error || "error")}</td></tr>`;
     return;
   }
 
-  res.trips.slice(0,200).forEach(t => {
-    tb.innerHTML += `
-      <tr>
-        <td class="mono">${escapeHtml(t.tripId)}</td>
-        <td class="mono">${escapeHtml(t.orderId)}</td>
-        <td class="mono">${escapeHtml(t.tripDate || "")}</td>
-        <td>${escapeHtml(t.truckName || t.truckId)}</td>
-        <td>${escapeHtml(t.driverName || t.driverId)}</td>
-        <td><span class="badge text-bg-secondary">${escapeHtml(t.status)}</span></td>
-        <td class="text-end">${escapeHtml(t.plannedFuelLiters)}</td>
-        <td class="text-end">${escapeHtml(t.plannedFuelBudget)}</td>
-      </tr>
-    `;
-  });
+  if (!res.trips.length) {
+    tb.innerHTML = `<tr><td colspan="8" class="text-center" style="color:var(--gray-400);padding:24px">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = res.trips.slice(0, 200).map(t => `
+    <tr>
+      <td class="mono">${esc(t.tripId)}</td>
+      <td class="mono">${esc(t.orderId)}</td>
+      <td class="mono">${esc(t.tripDate)}</td>
+      <td>${esc(t.truckName || t.truckId)}</td>
+      <td>${esc(t.driverName || t.driverId)}</td>
+      <td class="text-right mono">${numFmt(t.plannedFuelLiters)}</td>
+      <td class="text-right mono">${numFmt(t.plannedFuelBudget)}</td>
+      <td class="text-center"><span class="${badgeClass(t.status)}">${esc(t.status)}</span></td>
+    </tr>
+  `).join("");
 }
 
-/** ---------- Fuel ---------- */
+/* ─── Fuel ──────────────────────────────────────────────────── */
 async function fuelReturn() {
-  const tripId = document.getElementById("fuelTripId").value;
-  const fuelDate = document.getElementById("fuelDate").value.trim();
-  const liters = document.getElementById("fuelLiters").value;
+  const tripId       = document.getElementById("fuelTripId").value;
+  const fuelDate     = document.getElementById("fuelDate").value.trim();
+  const liters       = document.getElementById("fuelLiters").value;
   const pricePerLiter = document.getElementById("fuelPpl").value;
-  const amount = document.getElementById("fuelAmount").value;
-  const note = document.getElementById("fuelNote").value.trim();
+  const amount       = document.getElementById("fuelAmount").value;
+  const note         = document.getElementById("fuelNote").value.trim();
+  const res          = await jsonp("fuelReturn", { tripId, fuelDate, liters, pricePerLiter, amount, note });
 
-  const res = await jsonp("fuelReturn", { tripId, fuelDate, liters, pricePerLiter, amount, note });
   if (res.ok) {
-    setMsg("fuelMsg", true, `บันทึกน้ำมันสำเร็จ FuelId: <b>${res.fuelId}</b> และปิดงาน TripId: <b>${tripId}</b>`);
-    await loadTrips();
-    await loadOrders();
-    await refreshPickers();
+    setMsg("fuelMsg", true,
+      `บันทึกน้ำมันสำเร็จ Fuel ID: <b>${esc(res.fuelId)}</b> — ปิดงาน Trip: <b>${esc(tripId)}</b>`);
+    await Promise.all([loadTrips(), loadOrders(), refreshPickers()]);
   } else {
-    setMsg("fuelMsg", false, res.error || "ไม่สำเร็จ");
+    setMsg("fuelMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
 }
 
-/** ---------- Summary ---------- */
+/* ─── Summary ───────────────────────────────────────────────── */
 async function loadSummary() {
   const from = document.getElementById("sumFrom").value.trim();
-  const to = document.getElementById("sumTo").value.trim();
-  const res = await jsonp("summary", { from, to });
+  const to   = document.getElementById("sumTo").value.trim();
+  const res  = await jsonp("summary", { from, to });
+  const box  = document.getElementById("summaryBox");
 
-  const box = document.getElementById("summaryBox");
   if (!res.ok) {
-    box.innerHTML = `<div class="alert alert-danger">${escapeHtml(res.error || "error")}</div>`;
+    box.innerHTML = `<div class="alert alert-danger">✗ ${esc(res.error || "error")}</div>`;
     return;
   }
 
+  const period = (from || to)
+    ? `${from || "ทั้งหมด"} ถึง ${to || "ปัจจุบัน"}`
+    : "ทั้งหมด";
+
   box.innerHTML = `
-    <div class="row g-2">
-      <div class="col-md-4">
-        <div class="card p-3">
-          <div class="small-muted">Fuel liters</div>
-          <div class="fs-3 fw-bold">${Number(res.totalFuelLiters || 0).toFixed(2)}</div>
-        </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">ช่วงเวลา</div>
+        <div class="stat-value" style="font-size:18px;color:var(--blue)">${esc(period)}</div>
       </div>
-      <div class="col-md-4">
-        <div class="card p-3">
-          <div class="small-muted">Fuel cost (บาท)</div>
-          <div class="fs-3 fw-bold">${Number(res.totalFuelAmount || 0).toFixed(2)}</div>
-        </div>
+      <div class="stat-card">
+        <div class="stat-label">น้ำมันรวม</div>
+        <div class="stat-value">${numFmt(res.totalFuelLiters)}<span class="stat-unit">ลิตร</span></div>
       </div>
-      <div class="col-12">
-        <div class="card p-3">
-          <div class="fw-bold mb-2">รายละเอียด (byTruck/byDriver/byOrder)</div>
-          <pre class="mb-0">${escapeHtml(JSON.stringify({ byTruck: res.byTruck, byDriver: res.byDriver, byOrder: res.byOrder }, null, 2))}</pre>
-        </div>
+      <div class="stat-card">
+        <div class="stat-label">ค่าน้ำมันรวม</div>
+        <div class="stat-value">${numFmt(res.totalFuelAmount)}<span class="stat-unit">บาท</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span>🔍</span><span class="card-title">รายละเอียด (byTruck / byDriver / byOrder)</span></div>
+      <div class="card-body">
+        <pre class="pre-box">${esc(JSON.stringify({ byTruck: res.byTruck, byDriver: res.byDriver, byOrder: res.byOrder }, null, 2))}</pre>
       </div>
     </div>
   `;
 }
 
-/** Auto bootstrap on load (after you set SCRIPT_URL) */
+/* ─── Init ──────────────────────────────────────────────────── */
 window.addEventListener("load", () => {
-  // do nothing until user sets SCRIPT_URL
+  initDatePickers();
+  if (SCRIPT_URL && !SCRIPT_URL.includes("PASTE_")) loadAll();
 });
 </script>
-
 </body>
 </html>
