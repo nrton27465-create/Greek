@@ -734,7 +734,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcZ1-wcQzti1P7RkBFWB1mT1cf1AG_4DIo3jZBOGnyJQAbOmRQcu3imdEbLtmjSVLw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4Z0Y2427LCdCveC2z9Efs8A6Ql7ZJXbu1e2zAwzAE_u1ItBqF9w0eOHYg4PW9cJP/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1039,6 +1039,46 @@ async function loadSummary() {
     ? `${from || "ทั้งหมด"} ถึง ${to || "ปัจจุบัน"}`
     : "ทั้งหมด";
 
+  // Build tables for each breakdown
+  const buildTable = (title, icon, data) => {
+    if (!data || !Object.keys(data).length) {
+      return `<div class="card section-gap">
+        <div class="card-header"><span>${icon}</span><span class="card-title">${title}</span></div>
+        <div class="card-body"><div style="color:var(--gray-400);text-align:center;padding:20px">ไม่มีข้อมูล</div></div>
+      </div>`;
+    }
+
+    const rows = Object.entries(data)
+      .sort((a, b) => b[1].amount - a[1].amount) // sort by amount desc
+      .map(([id, val]) => `
+        <tr>
+          <td>${esc(id)}</td>
+          <td class="text-right mono">${numFmt(val.liters)}</td>
+          <td class="text-right mono">${numFmt(val.amount)}</td>
+          <td class="text-right mono">${val.liters > 0 ? numFmt(val.amount / val.liters) : "-"}</td>
+        </tr>
+      `).join("");
+
+    return `<div class="card section-gap">
+      <div class="card-header"><span>${icon}</span><span class="card-title">${title}</span></div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>รหัส</th>
+                <th class="text-right">ลิตร</th>
+                <th class="text-right">ค่าน้ำมัน (บาท)</th>
+                <th class="text-right">เฉลี่ย (บาท/ลิตร)</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  };
+
   box.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
@@ -1054,12 +1094,10 @@ async function loadSummary() {
         <div class="stat-value">${numFmt(res.totalFuelAmount)}<span class="stat-unit">บาท</span></div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><span>🔍</span><span class="card-title">รายละเอียด (byTruck / byDriver / byOrder)</span></div>
-      <div class="card-body">
-        <pre class="pre-box">${esc(JSON.stringify({ byTruck: res.byTruck, byDriver: res.byDriver, byOrder: res.byOrder }, null, 2))}</pre>
-      </div>
-    </div>
+
+    ${buildTable("สรุปตามรถ", "🚛", res.byTruck)}
+    ${buildTable("สรุปตามคนขับ", "👨‍✈️", res.byDriver)}
+    ${buildTable("สรุปตาม Order", "📦", res.byOrder)}
   `;
 }
 
