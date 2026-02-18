@@ -867,7 +867,7 @@ async function loadAll() {
 async function refreshPickers() {
   const [ordersRes, tripsRes] = await Promise.all([
     jsonp("listOrders", { status: "" }),
-    jsonp("listTrips",  { status: "ASSIGNED" })
+    jsonp("listTrips",  { status: "" })  // ดึงทุก status
   ]);
 
   if (ordersRes.ok) {
@@ -879,10 +879,13 @@ async function refreshPickers() {
   }
 
   if (tripsRes.ok) {
-    const items = tripsRes.trips.map(t => ({
-      id:   t.tripId,
-      name: `${t.tripId}  |  ${t.orderId}  |  ${t.truckName}  |  ${t.driverName}`
-    }));
+    // กรอง Trip ที่ยังไม่ปิดงาน (ไม่ใช่ CLOSED)
+    const items = tripsRes.trips
+      .filter(t => String(t.status).toUpperCase() !== "CLOSED")
+      .map(t => ({
+        id:   t.tripId,
+        name: `${t.tripId}  |  ${t.orderId}  |  ${t.truckName}  |  ${t.driverName}  |  ${t.status}`
+      }));
     optionize("fuelTripId", items, "-- เลือก Trip --");
   }
 }
