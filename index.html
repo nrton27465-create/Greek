@@ -1235,133 +1235,176 @@ async function loadSummary() {
 }
 
 /* ─── Chart rendering ───────────────────────────────────────── */
-function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to) {
+async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to) {
   if (!trips || !trips.length) return;
 
-  // Filter trips by date range
-  const filteredTrips = trips.filter(t => {
-    const tripDate = String(t.tripDate || '');
-    if (from && tripDate < from) return false;
-    if (to && tripDate > to) return false;
-    return true;
-  });
+  // Fetch fuel logs to get actual fuel usage
+  const fuelRes = await jsonp("summary", { from, to });
+  if (!fuelRes.ok) return;
 
-  // Group trips by date and calculate efficiency
-  const truckData = {};
-  const driverData = {};
+  // Build map of tripId -> actual fuel liters
+  const tripFuel = {};
+  
+  // We need to fetch fuel logs separately since summary doesn't give us trip-level detail
+  // For now, we'll use a different approach: group by date and calculate from trips
+  
+  const truckByDate = {};
+  const driverByDate = {};
 
-  filteredTrips.forEach(t => {
-    const date = t.tripDate;
+  trips.forEach(t => {
+    const date = String(t.tripDate || '');
+    if (from && date < from) return;
+    if (to && date > to) return;
+
     const dist = tripOdo[t.tripId] || 0;
     if (dist <= 0) return;
 
-    // Find fuel for this trip
-    const fuelLiters = parseFloat(t.plannedFuelLiters) || 0;
-    if (fuelLiters <= 0) return;
-
-    const efficiency = fuelLiters / dist;
     const truckId = tripToTruck[t.tripId];
     const driverId = tripToDriver[t.tripId];
 
-    // Group by truck
+    // For now, use plannedFuelLiters (later can be enhanced to use actual from FuelLogs)
+    const liters = parseFloat(t.plannedFuelLiters) || 0;
+    if (liters <= 0) return;
+
+    const efficiency = liters / dist;
+
+    // Group by truck and date
     if (truckId) {
-      if (!truckData[truckId]) truckData[truckId] = {};
-      if (!truckData[truckId][date]) truckData[truckId][date] = [];
-      truckData[truckId][date].push(efficiency);
+      if (!truckByDate[truckId]) truckByDate[truckId] = {};
+      if (!truckByDate[truckId][date]) truckByDate[truckId][date] = [];
+      truckByDate[truckId][date].push(efficiency);
     }
 
-    // Group by driver
+    // Group by driver and date
     if (driverId) {
-      if (!driverData[driverId]) driverData[driverId] = {};
-      if (!driverData[driverId][date]) driverData[driverId][date] = [];
-      driverData[driverId][date].push(efficiency);
+      if (!driverByDate[driverId]) driverByDate[driverId] = {};
+      if (!driverByDate[driverId][date]) driverByDate[driverId][date] = [];
+      driverByDate[driverId][date].push(efficiency);
     }
   });
 
   // Calculate daily averages
-  const avgData = (groupData) => {
+  const calcAvg = (groupData) => {
     const result = {};
     Object.entries(groupData).forEach(([id, dates]) => {
       result[id] = {};
-      Object.entries(dates).forEach(([date, efficiencies]) => {
-        const avg = efficiencies.reduce((a, b) => a + b, 0) / efficiencies.length;
-        result[id][date] = avg;
+      Object.entries(dates).forEach(([date, values]) => {
+        result[id][date] = values.reduce((a, b) => a + b, 0) / values.length;
       });
     });
     return result;
   };
 
-  const truckAvg = avgData(truckData);
-  const driverAvg = avgData(driverData);
+  const truckAvg = calcAvg(truckByDate);
+  const driverAvg = calcAvg(driverByDate);
 
-  // Get all unique dates and sort
+  // Get all dates
   const allDates = new Set();
   [...Object.values(truckAvg), ...Object.values(driverAvg)].forEach(dates => {
     Object.keys(dates).forEach(d => allDates.add(d));
   });
   const sortedDates = Array.from(allDates).sort();
 
-  // Prepare chart data
+  if (sortedDates.length === 0) {
+    // No data to display
+    return;
+  }
+
+  // Chart colors
   const colors = ['#1557c0', '#d67b00', '#1a8c5c', '#d63b3b', '#5b21b6', '#0369a1'];
-  
-  const prepareDatasets = (avgData) => {
+
+  const makeDatasets = (avgData) => {
     return Object.entries(avgData).map(([id, dates], idx) => ({
       label: id,
-      data: sortedDates.map(date => dates[date] || null),
+      data: sortedDates.map(date => dates[date] !== undefined ? dates[date] : null),
       borderColor: colors[idx % colors.length],
-      backgroundColor: colors[idx % colors.length] + '20',
-      borderWidth: 2,
+      backgroundColor: colors[idx % colors.length] + '30',
+      borderWidth: 2.5,
       tension: 0.3,
       pointRadius: 4,
-      pointHoverRadius: 6
+      pointHoverRadius: 7,
+      fill: false
     }));
   };
 
-  const chartOptions = {
+  const chartConfig = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { position: 'top', labels: { font: { family: 'IBM Plex Sans Thai', size: 11 } } },
+      legend: { 
+        position: 'top',
+        labels: { 
+          font: { family: 'IBM Plex Sans Thai', size: 12 },
+          padding: 10,
+          usePointStyle: true
+        }
+      },
       tooltip: {
+        backgroundColor: 'rgba(13, 47, 94, 0.95)',
+        titleFont: { family: 'IBM Plex Sans Thai', size: 13 },
+        bodyFont: { family: 'IBM Plex Mono', size: 12 },
+        padding: 12,
         callbacks: {
-          label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(3)} ลิตร/กม.`
+          label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} ลิตร/กม.`
         }
       }
     },
     scales: {
-      x: { 
-        title: { display: true, text: 'วันที่', font: { family: 'IBM Plex Sans Thai' } },
-        ticks: { font: { family: 'IBM Plex Mono', size: 10 } }
+      x: {
+        title: { 
+          display: true, 
+          text: 'วันที่',
+          font: { family: 'IBM Plex Sans Thai', size: 12, weight: '600' }
+        },
+        ticks: { 
+          font: { family: 'IBM Plex Mono', size: 10 },
+          maxRotation: 45,
+          minRotation: 45
+        },
+        grid: { display: false }
       },
-      y: { 
-        title: { display: true, text: 'อัตราสิ้นเปลือง (ลิตร/กม.)', font: { family: 'IBM Plex Sans Thai' } },
-        ticks: { font: { family: 'IBM Plex Mono', size: 10 } },
-        beginAtZero: true
+      y: {
+        title: { 
+          display: true, 
+          text: 'ลิตร/กม.',
+          font: { family: 'IBM Plex Sans Thai', size: 12, weight: '600' }
+        },
+        ticks: { 
+          font: { family: 'IBM Plex Mono', size: 10 },
+          callback: (val) => val.toFixed(2)
+        },
+        beginAtZero: true,
+        grid: { color: 'rgba(0,0,0,0.05)' }
       }
     }
   };
 
-  // Destroy existing charts
-  if (window.chartTruck) window.chartTruck.destroy();
-  if (window.chartDriver) window.chartDriver.destroy();
+  // Destroy existing charts if they exist
+  if (window.chartTruck && typeof window.chartTruck.destroy === 'function') {
+    window.chartTruck.destroy();
+  }
+  if (window.chartDriver && typeof window.chartDriver.destroy === 'function') {
+    window.chartDriver.destroy();
+  }
 
   // Render truck chart
   const ctxTruck = document.getElementById('chartTruck');
-  if (ctxTruck) {
+  if (ctxTruck && Object.keys(truckAvg).length > 0) {
     window.chartTruck = new Chart(ctxTruck, {
       type: 'line',
-      data: { labels: sortedDates, datasets: prepareDatasets(truckAvg) },
-      options: chartOptions
+      data: { labels: sortedDates, datasets: makeDatasets(truckAvg) },
+      options: chartConfig
     });
   }
 
   // Render driver chart
   const ctxDriver = document.getElementById('chartDriver');
-  if (ctxDriver) {
+  if (ctxDriver && Object.keys(driverAvg).length > 0) {
     window.chartDriver = new Chart(ctxDriver, {
       type: 'line',
-      data: { labels: sortedDates, datasets: prepareDatasets(driverAvg) },
-      options: chartOptions
+      data: { labels: sortedDates, datasets: makeDatasets(driverAvg) },
+      options: chartConfig
     });
   }
 }
