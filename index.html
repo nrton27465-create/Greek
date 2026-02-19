@@ -519,7 +519,8 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="form-grid cols-4">
               <div class="form-group col-span-2">
                 <label class="form-label">ลูกค้า</label>
-                <select id="customerId" class="form-select"></select>
+                <input id="customerId" list="customerList" class="form-control" placeholder="พิมพ์ค้นหาลูกค้า..." autocomplete="off">
+                <datalist id="customerList"></datalist>
               </div>
               <div class="form-group">
                 <label class="form-label">วันที่ส่ง</label>
@@ -766,13 +767,14 @@ tbody tr:last-child td { border-bottom: none; }
 
       <!-- ── TAB 5: Data Management ── -->
       <div id="tabData" class="tab-pane" style="display:none">
+        <!-- ลูกค้า -->
         <div class="card section-gap">
-          <div class="card-header"><span>👥</span><span class="card-title">เพิ่มลูกค้า</span></div>
+          <div class="card-header"><span>👥</span><span class="card-title">จัดการลูกค้า</span></div>
           <div class="card-body">
             <div class="form-grid cols-3">
               <div class="form-group">
                 <label class="form-label">รหัสลูกค้า</label>
-                <input id="newCusId" class="form-control" placeholder="เช่น CUS-001">
+                <input id="newCusId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">ชื่อลูกค้า</label>
@@ -783,16 +785,23 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
             <div class="msg" id="cusMsg"></div>
+            <div class="table-wrap" style="margin-top:16px">
+              <table>
+                <thead><tr><th>รหัส</th><th>ชื่อลูกค้า</th><th class="text-center">จัดการ</th></tr></thead>
+                <tbody id="cusTable"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
+        <!-- สินค้า -->
         <div class="card section-gap">
-          <div class="card-header"><span>📦</span><span class="card-title">เพิ่มสินค้า</span></div>
+          <div class="card-header"><span>📦</span><span class="card-title">จัดการสินค้า</span></div>
           <div class="card-body">
             <div class="form-grid cols-3">
               <div class="form-group">
                 <label class="form-label">รหัสสินค้า</label>
-                <input id="newPrdId" class="form-control" placeholder="เช่น PRD-001">
+                <input id="newPrdId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">ชื่อสินค้า</label>
@@ -803,16 +812,23 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
             <div class="msg" id="prdMsg"></div>
+            <div class="table-wrap" style="margin-top:16px">
+              <table>
+                <thead><tr><th>รหัส</th><th>ชื่อสินค้า</th><th class="text-center">จัดการ</th></tr></thead>
+                <tbody id="prdTable"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
+        <!-- พนักงานขับ -->
         <div class="card section-gap">
-          <div class="card-header"><span>👨‍✈️</span><span class="card-title">เพิ่มพนักงานขับรถ</span></div>
+          <div class="card-header"><span>👨‍✈️</span><span class="card-title">จัดการพนักงานขับรถ</span></div>
           <div class="card-body">
             <div class="form-grid cols-3">
               <div class="form-group">
                 <label class="form-label">รหัสพนักงาน</label>
-                <input id="newDrvId" class="form-control" placeholder="เช่น DRV-001">
+                <input id="newDrvId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">ชื่อพนักงาน</label>
@@ -823,16 +839,23 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
             <div class="msg" id="drvMsg"></div>
+            <div class="table-wrap" style="margin-top:16px">
+              <table>
+                <thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th class="text-center">จัดการ</th></tr></thead>
+                <tbody id="drvTable"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
+        <!-- รถขนส่ง -->
         <div class="card">
-          <div class="card-header"><span>🚛</span><span class="card-title">เพิ่มรถขนส่ง</span></div>
+          <div class="card-header"><span>🚛</span><span class="card-title">จัดการรถขนส่ง</span></div>
           <div class="card-body">
             <div class="form-grid cols-3">
               <div class="form-group">
                 <label class="form-label">รหัสรถ</label>
-                <input id="newTrkId" class="form-control" placeholder="เช่น TRK-001">
+                <input id="newTrkId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">ชื่อรถ / ทะเบียน</label>
@@ -843,6 +866,12 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
             <div class="msg" id="trkMsg"></div>
+            <div class="table-wrap" style="margin-top:16px">
+              <table>
+                <thead><tr><th>รหัส</th><th>ชื่อรถ/ทะเบียน</th><th class="text-center">จัดการ</th></tr></thead>
+                <tbody id="trkTable"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -986,12 +1015,20 @@ async function loadAll() {
 
     DDL = data.ddl || { drivers: [], trucks: [], customers: [], products: [] };
     
-    optionize("customerId", DDL.customers || [], "-- เลือกลูกค้า --");
+    // Customer autocomplete (datalist)
+    const customerList = document.getElementById("customerList");
+    if (customerList) {
+      customerList.innerHTML = (DDL.customers || []).map(c => 
+        `<option value="${esc(c.id)}">${esc(c.name)}</option>`
+      ).join("");
+    }
+    
     optionize("product",    DDL.products  || [], "-- เลือกสินค้า --");
     optionize("truckId",    DDL.trucks    || [], "-- เลือกรถ --");
     optionize("driverId",   DDL.drivers   || [], "-- เลือกคนขับ --");
 
     await Promise.all([loadOrders(), loadTrips(), refreshPickers()]);
+    renderDataTables();
   } catch(e) {
     console.error("Bootstrap error:", e);
     alert("Connection error: " + e.message + "\n\nกรุณาตรวจสอบ:\n1. SCRIPT_URL ถูกต้องหรือไม่\n2. Deploy Apps Script แล้วหรือยัง\n3. เปิด Console (F12) ดู error เพิ่มเติม");
@@ -1037,8 +1074,16 @@ async function refreshPickers() {
 
 /* ─── Orders ────────────────────────────────────────────────── */
 async function createOrder() {
-  const customerId   = document.getElementById("customerId").value;
-  const customerName = (DDL.customers.find(x => x.id === customerId) || {}).name || "";
+  const customerId   = document.getElementById("customerId").value.trim();
+  
+  // Find customer by ID
+  const customer = DDL.customers.find(x => x.id === customerId);
+  if (!customer) {
+    setMsg("orderMsg", false, "กรุณาเลือกลูกค้าจากรายการ");
+    return;
+  }
+  
+  const customerName = customer.name;
   const shipDate     = document.getElementById("shipDate").value.trim();
   const destination  = document.getElementById("destination").value.trim();
   const productId    = document.getElementById("product").value;
@@ -1615,6 +1660,76 @@ function suggestNextId(inputId, prefix) {
   const nextId = `${prefix}-${nextNum}`;
   document.getElementById(inputId).value = nextId;
   document.getElementById(inputId).placeholder = `เช่น ${nextId}`;
+}
+
+function renderDataTables() {
+  // Render customers
+  const cusTable = document.getElementById("cusTable");
+  if (cusTable) {
+    cusTable.innerHTML = DDL.customers.map(c => `
+      <tr>
+        <td class="mono">${esc(c.id)}</td>
+        <td>${esc(c.name)}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="deleteDDL('CUSTOMER','${esc(c.id)}','${esc(c.name)}')">ลบ</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+  }
+
+  // Render products
+  const prdTable = document.getElementById("prdTable");
+  if (prdTable) {
+    prdTable.innerHTML = DDL.products.map(p => `
+      <tr>
+        <td class="mono">${esc(p.id)}</td>
+        <td>${esc(p.name)}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="deleteDDL('PRODUCT','${esc(p.id)}','${esc(p.name)}')">ลบ</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+  }
+
+  // Render drivers
+  const drvTable = document.getElementById("drvTable");
+  if (drvTable) {
+    drvTable.innerHTML = DDL.drivers.map(d => `
+      <tr>
+        <td class="mono">${esc(d.id)}</td>
+        <td>${esc(d.name)}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="deleteDDL('DRIVER','${esc(d.id)}','${esc(d.name)}')">ลบ</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+  }
+
+  // Render trucks
+  const trkTable = document.getElementById("trkTable");
+  if (trkTable) {
+    trkTable.innerHTML = DDL.trucks.map(t => `
+      <tr>
+        <td class="mono">${esc(t.id)}</td>
+        <td>${esc(t.name)}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="deleteDDL('TRUCK','${esc(t.id)}','${esc(t.name)}')">ลบ</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+  }
+}
+
+async function deleteDDL(type, id, name) {
+  if (!confirm(`ต้องการลบ ${name} (${id}) ใช่หรือไม่?`)) return;
+  
+  const res = await jsonp("deleteDDL", { type, id });
+  if (res.ok) {
+    alert(`ลบ ${name} สำเร็จ`);
+    await loadAll();
+  } else {
+    alert(`ลบไม่สำเร็จ: ${res.error || "Unknown error"}`);
+  }
 }
 
 /* ─── Init ──────────────────────────────────────────────────── */
