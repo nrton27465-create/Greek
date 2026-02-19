@@ -744,7 +744,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhAYqzjT7Yee0whQVBg1qsAJQcshlEG7EbtqbfBgnSYM0IS11-LMxbQ0Ow44CA5J5Zmg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcZ1-wcQzti1P7RkBFWB1mT1cf1AG_4DIo3jZBOGnyJQAbOmRQcu3imdEbLtmjSVLw/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -830,6 +830,14 @@ function badgeClass(status) {
 
 function optionize(selectId, items, placeholder = "-- เลือก --") {
   const el = document.getElementById(selectId);
+  if (!el) return;
+  
+  // Handle null/undefined items
+  if (!items || !Array.isArray(items)) {
+    el.innerHTML = `<option value="">${esc(placeholder)}</option>`;
+    return;
+  }
+  
   el.innerHTML = `<option value="">${esc(placeholder)}</option>` +
     items.map(x => `<option value="${esc(x.id)}">${esc(x.name)} &nbsp;(${esc(x.id)})</option>`).join("");
 }
@@ -859,18 +867,22 @@ async function loadAll() {
 
   try {
     const data = await jsonp("bootstrap");
-    if (!data.ok) { alert("bootstrap error: " + (data.error || "")); return; }
+    if (!data.ok) { 
+      alert("Bootstrap error: " + (data.error || "Unknown error")); 
+      return; 
+    }
 
-    DDL = data.ddl;
-    optionize("customerId", DDL.customers, "-- เลือกลูกค้า --");
-    optionize("product",    DDL.products,  "-- เลือกสินค้า --");
-    optionize("truckId",    DDL.trucks,    "-- เลือกรถ --");
-    optionize("driverId",   DDL.drivers,   "-- เลือกคนขับ --");
+    DDL = data.ddl || { drivers: [], trucks: [], customers: [], products: [] };
+    
+    optionize("customerId", DDL.customers || [], "-- เลือกลูกค้า --");
+    optionize("product",    DDL.products  || [], "-- เลือกสินค้า --");
+    optionize("truckId",    DDL.trucks    || [], "-- เลือกรถ --");
+    optionize("driverId",   DDL.drivers   || [], "-- เลือกคนขับ --");
 
     await Promise.all([loadOrders(), loadTrips(), refreshPickers()]);
   } catch(e) {
-    console.error(e);
-    alert("Connection error: " + e.message);
+    console.error("Bootstrap error:", e);
+    alert("Connection error: " + e.message + "\n\nกรุณาตรวจสอบ:\n1. SCRIPT_URL ถูกต้องหรือไม่\n2. Deploy Apps Script แล้วหรือยัง\n3. เปิด Console (F12) ดู error เพิ่มเติม");
   }
 }
 
