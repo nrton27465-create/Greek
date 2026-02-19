@@ -690,7 +690,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="form-grid cols-4">
               <div class="form-group col-span-2">
                 <label class="form-label">เลือก Trip</label>
-                <select id="fuelTripId" class="form-select"></select>
+                <select id="fuelTripId" class="form-select" onchange="loadTripOdo()"></select>
               </div>
               <div class="form-group">
                 <label class="form-label">วันที่เติม</label>
@@ -817,14 +817,18 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="card section-gap">
           <div class="card-header"><span>👨‍✈️</span><span class="card-title">จัดการพนักงานขับรถ</span></div>
           <div class="card-body">
-            <div class="form-grid cols-3">
+            <div class="form-grid cols-4">
               <div class="form-group">
-                <label class="form-label">รหัสพนักงาน</label>
+                <label class="form-label">รหัสระบบ (DRV)</label>
                 <input id="newDrvId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">ชื่อพนักงาน</label>
                 <input id="newDrvName" class="form-control" placeholder="เช่น สมชาย">
+              </div>
+              <div class="form-group">
+                <label class="form-label">รหัสพนักงาน</label>
+                <input id="newDrvEmpId" class="form-control" placeholder="เช่น EMP-001">
               </div>
               <div class="form-group align-btn">
                 <button class="btn btn-primary" onclick="addDriver()">+ เพิ่มพนักงาน</button>
@@ -833,7 +837,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="msg" id="drvMsg"></div>
             <div class="table-wrap" style="margin-top:16px">
               <table>
-                <thead><tr><th>รหัส</th><th>ชื่อพนักงาน</th><th class="text-center">จัดการ</th></tr></thead>
+                <thead><tr><th>รหัสระบบ</th><th>ชื่อพนักงาน</th><th>รหัสพนักงาน</th><th class="text-center">จัดการ</th></tr></thead>
                 <tbody id="drvTable"></tbody>
               </table>
             </div>
@@ -1033,6 +1037,9 @@ async function refreshPickers() {
     jsonp("listTrips",  { status: "" })  // ดึงทุก status
   ]);
 
+  // Store trips globally for odometer lookup
+  window.TRIPS_DATA = tripsRes.ok ? tripsRes.trips : [];
+
   if (ordersRes.ok) {
     // Format: OrderId | CustomerName
     // Filter: เฉพาะ NEW และ PLANNED (ยังไม่ถูกมอบหมาย)
@@ -1067,6 +1074,20 @@ async function refreshPickers() {
         };
       });
     optionize("fuelTripId", items, "-- เลือก Trip --");
+  }
+}
+
+function loadTripOdo() {
+  const tripId = document.getElementById("fuelTripId").value;
+  if (!tripId || !window.TRIPS_DATA) return;
+
+  const trip = window.TRIPS_DATA.find(t => t.tripId === tripId);
+  if (trip) {
+    const startOdo = parseFloat(trip.startOdo) || 0;
+    const endOdo = parseFloat(trip.endOdo) || 0;
+    
+    document.getElementById("fuelStartOdo").value = startOdo || "";
+    document.getElementById("fuelEndOdo").value = endOdo || "";
   }
 }
 
@@ -1620,15 +1641,19 @@ async function addProduct() {
 async function addDriver() {
   const id = document.getElementById("newDrvId").value.trim();
   const name = document.getElementById("newDrvName").value.trim();
+  const empId = document.getElementById("newDrvEmpId").value.trim();
+  
   if (!name) {
     setMsg("drvMsg", false, "กรุณากรอกชื่อพนักงาน");
     return;
   }
-  const res = await jsonp("addDDL", { type: "DRIVER", id: id || "", name });
+  
+  const res = await jsonp("addDDL", { type: "DRIVER", id: id || "", name, empId: empId || "" });
   if (res.ok) {
     setMsg("drvMsg", true, `เพิ่มพนักงาน <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newDrvId").value = "";
     document.getElementById("newDrvName").value = "";
+    document.getElementById("newDrvEmpId").value = "";
     await loadAll();
     suggestNextId("newDrvId", "DRV");
   } else {
@@ -1713,11 +1738,12 @@ function renderDataTables() {
       <tr>
         <td class="mono">${esc(d.id)}</td>
         <td>${esc(d.name)}</td>
+        <td class="mono">${esc(d.empId || '-')}</td>
         <td class="text-center">
           <button class="btn btn-sm btn-outline" onclick="deleteDDL('DRIVER','${esc(d.id)}','${esc(d.name)}')">ลบ</button>
         </td>
       </tr>
-    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    `).join("") || '<tr><td colspan="4" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
   }
 
   // Render trucks
