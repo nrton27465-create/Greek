@@ -653,6 +653,7 @@ tbody tr:last-child td { border-bottom: none; }
               <select id="tripStatusFilter" class="filter-select" onchange="loadTrips()">
                 <option value="">ทั้งหมด</option>
                 <option value="ASSIGNED">ASSIGNED</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
                 <option value="DELIVERED">DELIVERED</option>
                 <option value="CLOSED">CLOSED</option>
               </select>
@@ -1042,11 +1043,11 @@ async function refreshPickers() {
 
   if (ordersRes.ok) {
     // Format: OrderId | CustomerName
-    // Filter: เฉพาะ NEW และ PLANNED (ยังไม่ถูกมอบหมาย)
+    // Filter: เฉพาะ NEW, PLANNED, และ IN_PROGRESS (ยังไม่ถูกมอบหมาย/กำลังดำเนินการ)
     const items = ordersRes.orders
       .filter(o => {
         const status = String(o.status || "").toUpperCase();
-        return status === "NEW" || status === "PLANNED";
+        return status === "NEW" || status === "PLANNED" || status === "IN_PROGRESS";
       })
       .map(o => ({
         id:   o.orderId,
