@@ -476,6 +476,9 @@ tbody tr:last-child td { border-bottom: none; }
       <button class="nav-item" data-tab="tabSummary">
         <span class="nav-icon">📊</span> สรุปต้นทุน
       </button>
+      <button class="nav-item" data-tab="tabData">
+        <span class="nav-icon">⚙️</span> จัดการข้อมูล
+      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -761,6 +764,89 @@ tbody tr:last-child td { border-bottom: none; }
         <div id="summaryBox"></div>
       </div>
 
+      <!-- ── TAB 5: Data Management ── -->
+      <div id="tabData" class="tab-pane" style="display:none">
+        <div class="card section-gap">
+          <div class="card-header"><span>👥</span><span class="card-title">เพิ่มลูกค้า</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label class="form-label">รหัสลูกค้า</label>
+                <input id="newCusId" class="form-control" placeholder="เช่น CUS-001">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ชื่อลูกค้า</label>
+                <input id="newCusName" class="form-control" placeholder="เช่น บริษัท ABC จำกัด">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary" onclick="addCustomer()">+ เพิ่มลูกค้า</button>
+              </div>
+            </div>
+            <div class="msg" id="cusMsg"></div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+          <div class="card-header"><span>📦</span><span class="card-title">เพิ่มสินค้า</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label class="form-label">รหัสสินค้า</label>
+                <input id="newPrdId" class="form-control" placeholder="เช่น PRD-001">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ชื่อสินค้า</label>
+                <input id="newPrdName" class="form-control" placeholder="เช่น ปูนซีเมนต์">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary" onclick="addProduct()">+ เพิ่มสินค้า</button>
+              </div>
+            </div>
+            <div class="msg" id="prdMsg"></div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+          <div class="card-header"><span>👨‍✈️</span><span class="card-title">เพิ่มพนักงานขับรถ</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label class="form-label">รหัสพนักงาน</label>
+                <input id="newDrvId" class="form-control" placeholder="เช่น DRV-001">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ชื่อพนักงาน</label>
+                <input id="newDrvName" class="form-control" placeholder="เช่น สมชาย">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary" onclick="addDriver()">+ เพิ่มพนักงาน</button>
+              </div>
+            </div>
+            <div class="msg" id="drvMsg"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span>🚛</span><span class="card-title">เพิ่มรถขนส่ง</span></div>
+          <div class="card-body">
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label class="form-label">รหัสรถ</label>
+                <input id="newTrkId" class="form-control" placeholder="เช่น TRK-001">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ชื่อรถ / ทะเบียน</label>
+                <input id="newTrkName" class="form-control" placeholder="เช่น 70-1234">
+              </div>
+              <div class="form-group align-btn">
+                <button class="btn btn-primary" onclick="addTruck()">+ เพิ่มรถ</button>
+              </div>
+            </div>
+            <div class="msg" id="trkMsg"></div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app-shell -->
@@ -776,7 +862,8 @@ const TAB_META = {
   tabOrder:   { title: "รับออเดอร์",       sub: "บันทึกคำสั่งจัดส่งจากลูกค้า" },
   tabPlan:    { title: "วางแผน / มอบหมาย", sub: "กำหนดน้ำมันและมอบหมายรถ-คนขับ" },
   tabFuel:    { title: "บันทึกน้ำมัน",      sub: "บันทึกการเติมน้ำมันและปิดงาน" },
-  tabSummary: { title: "สรุปต้นทุน",        sub: "รายงานค่าน้ำมันแยกรถ / คนขับ / Order" }
+  tabSummary: { title: "สรุปต้นทุน",        sub: "รายงานค่าน้ำมันแยกรถ / คนขับ / Order" },
+  tabData:    { title: "จัดการข้อมูล",      sub: "เพิ่ม/แก้ไข ลูกค้า สินค้า คนขับ รถ" }
 };
 
 document.querySelectorAll(".nav-item[data-tab]").forEach(btn => {
@@ -918,31 +1005,30 @@ async function refreshPickers() {
   ]);
 
   if (ordersRes.ok) {
-    // Format: OrderId | CustomerName | ShipDate
+    // Format: OrderId | CustomerName
     const items = ordersRes.orders.map(o => ({
       id:   o.orderId,
-      name: `${o.orderId} | ${o.customerName} | ${o.shipDate}`
+      name: `${o.orderId} | ${o.customerName}`
     }));
     optionize("planOrderId", items, "-- เลือก Order --");
   }
 
   if (tripsRes.ok) {
     // กรอง Trip ที่ยังไม่ปิดงาน (ไม่ใช่ CLOSED)
-    // Format: TripId | CustomerName | ShipDate
+    // Format: TripId | CustomerName
     const items = tripsRes.trips
       .filter(t => String(t.status).toUpperCase() !== "CLOSED")
       .map(t => {
-        // Find order info to get customer name and ship date
+        // Find order info to get customer name
         const order = ordersRes.ok 
           ? ordersRes.orders.find(o => o.orderId === t.orderId)
           : null;
         
         const customerName = order ? order.customerName : '';
-        const shipDate = order ? order.shipDate : t.tripDate;
         
         return {
           id:   t.tripId,
-          name: `${t.tripId} | ${customerName} | ${shipDate}`
+          name: `${t.tripId} | ${customerName}`
         };
       });
     optionize("fuelTripId", items, "-- เลือก Trip --");
@@ -1310,8 +1396,21 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
     return;
   }
 
-  // Chart colors
-  const colors = ['#1557c0', '#d67b00', '#1a8c5c', '#d63b3b', '#5b21b6', '#0369a1'];
+  // Format dates to DD/MM
+  const formattedDates = sortedDates.map(d => {
+    const parts = d.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}`; // DD/MM
+    }
+    return d;
+  });
+
+  // Chart colors - extended for more trucks/drivers
+  const colors = [
+    '#1557c0', '#d67b00', '#1a8c5c', '#d63b3b', 
+    '#5b21b6', '#0369a1', '#be123c', '#047857',
+    '#7c3aed', '#ea580c', '#0891b2', '#dc2626'
+  ];
 
   const makeDatasets = (avgData) => {
     return Object.entries(avgData).map(([id, dates], idx) => {
@@ -1395,7 +1494,7 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   if (ctxTruck && Object.keys(truckAvg).length > 0) {
     window.chartTruck = new Chart(ctxTruck, {
       type: 'bar',
-      data: { labels: sortedDates, datasets: makeDatasets(truckAvg) },
+      data: { labels: formattedDates, datasets: makeDatasets(truckAvg) },
       options: chartConfig
     });
   }
@@ -1405,9 +1504,82 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   if (ctxDriver && Object.keys(driverAvg).length > 0) {
     window.chartDriver = new Chart(ctxDriver, {
       type: 'bar',
-      data: { labels: sortedDates, datasets: makeDatasets(driverAvg) },
+      data: { labels: formattedDates, datasets: makeDatasets(driverAvg) },
       options: chartConfig
     });
+  }
+}
+
+/* ─── Data Management ───────────────────────────────────────── */
+async function addCustomer() {
+  const id = document.getElementById("newCusId").value.trim();
+  const name = document.getElementById("newCusName").value.trim();
+  if (!id || !name) {
+    setMsg("cusMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  const res = await jsonp("addDDL", { type: "CUSTOMER", id, name });
+  if (res.ok) {
+    setMsg("cusMsg", true, `เพิ่มลูกค้า <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newCusId").value = "";
+    document.getElementById("newCusName").value = "";
+    await loadAll();
+  } else {
+    setMsg("cusMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
+async function addProduct() {
+  const id = document.getElementById("newPrdId").value.trim();
+  const name = document.getElementById("newPrdName").value.trim();
+  if (!id || !name) {
+    setMsg("prdMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  const res = await jsonp("addDDL", { type: "PRODUCT", id, name });
+  if (res.ok) {
+    setMsg("prdMsg", true, `เพิ่มสินค้า <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newPrdId").value = "";
+    document.getElementById("newPrdName").value = "";
+    await loadAll();
+  } else {
+    setMsg("prdMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
+async function addDriver() {
+  const id = document.getElementById("newDrvId").value.trim();
+  const name = document.getElementById("newDrvName").value.trim();
+  if (!id || !name) {
+    setMsg("drvMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  const res = await jsonp("addDDL", { type: "DRIVER", id, name });
+  if (res.ok) {
+    setMsg("drvMsg", true, `เพิ่มพนักงาน <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newDrvId").value = "";
+    document.getElementById("newDrvName").value = "";
+    await loadAll();
+  } else {
+    setMsg("drvMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
+async function addTruck() {
+  const id = document.getElementById("newTrkId").value.trim();
+  const name = document.getElementById("newTrkName").value.trim();
+  if (!id || !name) {
+    setMsg("trkMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+    return;
+  }
+  const res = await jsonp("addDDL", { type: "TRUCK", id, name });
+  if (res.ok) {
+    setMsg("trkMsg", true, `เพิ่มรถ <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newTrkId").value = "";
+    document.getElementById("newTrkName").value = "";
+    await loadAll();
+  } else {
+    setMsg("trkMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
 }
 
