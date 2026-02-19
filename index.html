@@ -1384,6 +1384,13 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   const truckAvg = calcAvg(truckByDate);
   const driverAvg = calcAvg(driverByDate);
 
+  console.log('Chart data:', { 
+    truckAvg, 
+    driverAvg, 
+    truckCount: Object.keys(truckAvg).length,
+    driverCount: Object.keys(driverAvg).length 
+  });
+
   // Get all dates
   const allDates = new Set();
   [...Object.values(truckAvg), ...Object.values(driverAvg)].forEach(dates => {
@@ -1514,16 +1521,18 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
 async function addCustomer() {
   const id = document.getElementById("newCusId").value.trim();
   const name = document.getElementById("newCusName").value.trim();
-  if (!id || !name) {
-    setMsg("cusMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+  if (!name) {
+    setMsg("cusMsg", false, "กรุณากรอกชื่อลูกค้า");
     return;
   }
-  const res = await jsonp("addDDL", { type: "CUSTOMER", id, name });
+  // Use provided ID or let backend generate
+  const res = await jsonp("addDDL", { type: "CUSTOMER", id: id || "", name });
   if (res.ok) {
-    setMsg("cusMsg", true, `เพิ่มลูกค้า <b>${esc(name)}</b> สำเร็จ`);
+    setMsg("cusMsg", true, `เพิ่มลูกค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newCusId").value = "";
     document.getElementById("newCusName").value = "";
     await loadAll();
+    suggestNextId("newCusId", "CUS");
   } else {
     setMsg("cusMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
@@ -1532,16 +1541,17 @@ async function addCustomer() {
 async function addProduct() {
   const id = document.getElementById("newPrdId").value.trim();
   const name = document.getElementById("newPrdName").value.trim();
-  if (!id || !name) {
-    setMsg("prdMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+  if (!name) {
+    setMsg("prdMsg", false, "กรุณากรอกชื่อสินค้า");
     return;
   }
-  const res = await jsonp("addDDL", { type: "PRODUCT", id, name });
+  const res = await jsonp("addDDL", { type: "PRODUCT", id: id || "", name });
   if (res.ok) {
-    setMsg("prdMsg", true, `เพิ่มสินค้า <b>${esc(name)}</b> สำเร็จ`);
+    setMsg("prdMsg", true, `เพิ่มสินค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newPrdId").value = "";
     document.getElementById("newPrdName").value = "";
     await loadAll();
+    suggestNextId("newPrdId", "PRD");
   } else {
     setMsg("prdMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
@@ -1550,16 +1560,17 @@ async function addProduct() {
 async function addDriver() {
   const id = document.getElementById("newDrvId").value.trim();
   const name = document.getElementById("newDrvName").value.trim();
-  if (!id || !name) {
-    setMsg("drvMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+  if (!name) {
+    setMsg("drvMsg", false, "กรุณากรอกชื่อพนักงาน");
     return;
   }
-  const res = await jsonp("addDDL", { type: "DRIVER", id, name });
+  const res = await jsonp("addDDL", { type: "DRIVER", id: id || "", name });
   if (res.ok) {
-    setMsg("drvMsg", true, `เพิ่มพนักงาน <b>${esc(name)}</b> สำเร็จ`);
+    setMsg("drvMsg", true, `เพิ่มพนักงาน <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newDrvId").value = "";
     document.getElementById("newDrvName").value = "";
     await loadAll();
+    suggestNextId("newDrvId", "DRV");
   } else {
     setMsg("drvMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
@@ -1568,25 +1579,56 @@ async function addDriver() {
 async function addTruck() {
   const id = document.getElementById("newTrkId").value.trim();
   const name = document.getElementById("newTrkName").value.trim();
-  if (!id || !name) {
-    setMsg("trkMsg", false, "กรุณากรอกข้อมูลให้ครบ");
+  if (!name) {
+    setMsg("trkMsg", false, "กรุณากรอกชื่อรถ/ทะเบียน");
     return;
   }
-  const res = await jsonp("addDDL", { type: "TRUCK", id, name });
+  const res = await jsonp("addDDL", { type: "TRUCK", id: id || "", name });
   if (res.ok) {
-    setMsg("trkMsg", true, `เพิ่มรถ <b>${esc(name)}</b> สำเร็จ`);
+    setMsg("trkMsg", true, `เพิ่มรถ <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newTrkId").value = "";
     document.getElementById("newTrkName").value = "";
     await loadAll();
+    suggestNextId("newTrkId", "TRK");
   } else {
     setMsg("trkMsg", false, esc(res.error || "ไม่สำเร็จ"));
   }
 }
 
+function suggestNextId(inputId, prefix) {
+  // Suggest next ID based on current DDL data
+  let max = 0;
+  const items = prefix === "CUS" ? DDL.customers :
+                prefix === "PRD" ? DDL.products :
+                prefix === "DRV" ? DDL.drivers :
+                prefix === "TRK" ? DDL.trucks : [];
+  
+  items.forEach(item => {
+    const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > max) max = num;
+    }
+  });
+  
+  const nextNum = String(max + 1).padStart(3, '0');
+  const nextId = `${prefix}-${nextNum}`;
+  document.getElementById(inputId).value = nextId;
+  document.getElementById(inputId).placeholder = `เช่น ${nextId}`;
+}
+
 /* ─── Init ──────────────────────────────────────────────────── */
 window.addEventListener("load", () => {
   initDatePickers();
-  if (SCRIPT_URL && !SCRIPT_URL.includes("PASTE_")) loadAll();
+  if (SCRIPT_URL && !SCRIPT_URL.includes("PASTE_")) {
+    loadAll().then(() => {
+      // Auto-suggest IDs for data management form
+      suggestNextId("newCusId", "CUS");
+      suggestNextId("newPrdId", "PRD");
+      suggestNextId("newDrvId", "DRV");
+      suggestNextId("newTrkId", "TRK");
+    });
+  }
 });
 </script>
 </body>
