@@ -689,13 +689,23 @@ tbody tr:last-child td { border-bottom: none; }
                 <label class="form-label">ยอดเงินรวม (บาท)</label>
                 <input id="fuelAmount" class="form-control" type="number" step="0.01" placeholder="คำนวณอัตโนมัติ">
               </div>
-              <div class="form-group align-btn">
-                <button class="btn btn-primary btn-full" onclick="fuelReturn()">✓ บันทึก + ปิดงาน</button>
-              </div>
+              <div class="form-group"><!-- spacer --></div>
 
-              <div class="form-group col-span-4">
+              <div class="form-group">
+                <label class="form-label">เลขไมล์เริ่มต้น (กม.)</label>
+                <input id="fuelStartOdo" class="form-control" type="number" step="1" placeholder="เช่น 1000">
+              </div>
+              <div class="form-group">
+                <label class="form-label">เลขไมล์สิ้นสุด (กม.)</label>
+                <input id="fuelEndOdo" class="form-control" type="number" step="1" placeholder="เช่น 1260">
+              </div>
+              <div class="form-group col-span-2">
                 <label class="form-label">หมายเหตุ</label>
                 <input id="fuelNote" class="form-control" placeholder="เช่น เติมปั๊ม PTT / ใบเสร็จเลขที่...">
+              </div>
+
+              <div class="form-group align-btn col-span-4">
+                <button class="btn btn-primary" onclick="fuelReturn()">✓ บันทึก + ปิดงาน</button>
               </div>
             </div>
             <div class="msg" id="fuelMsg"></div>
@@ -734,7 +744,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcZ1-wcQzti1P7RkBFWB1mT1cf1AG_4DIo3jZBOGnyJQAbOmRQcu3imdEbLtmjSVLw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhAYqzjT7Yee0whQVBg1qsAJQcshlEG7EbtqbfBgnSYM0IS11-LMxbQ0Ow44CA5J5Zmg/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1015,11 +1025,24 @@ async function fuelReturn() {
   const pricePerLiter = document.getElementById("fuelPpl").value;
   const amount       = document.getElementById("fuelAmount").value;
   const note         = document.getElementById("fuelNote").value.trim();
-  const res          = await jsonp("fuelReturn", { tripId, fuelDate, liters, pricePerLiter, amount, note });
+  const startOdo     = document.getElementById("fuelStartOdo").value;
+  const endOdo       = document.getElementById("fuelEndOdo").value;
+  
+  const res = await jsonp("fuelReturn", { 
+    tripId, fuelDate, liters, pricePerLiter, amount, note,
+    startOdo, endOdo 
+  });
 
   if (res.ok) {
     setMsg("fuelMsg", true,
       `บันทึกน้ำมันสำเร็จ Fuel ID: <b>${esc(res.fuelId)}</b> — ปิดงาน Trip: <b>${esc(tripId)}</b>`);
+    // Clear form
+    document.getElementById("fuelLiters").value = "";
+    document.getElementById("fuelPpl").value = "";
+    document.getElementById("fuelAmount").value = "";
+    document.getElementById("fuelNote").value = "";
+    document.getElementById("fuelStartOdo").value = "";
+    document.getElementById("fuelEndOdo").value = "";
     await Promise.all([loadTrips(), loadOrders(), refreshPickers()]);
   } else {
     setMsg("fuelMsg", false, esc(res.error || "ไม่สำเร็จ"));
@@ -1042,8 +1065,20 @@ async function loadSummary() {
     ? `${from || "ทั้งหมด"} ถึง ${to || "ปัจจุบัน"}`
     : "ทั้งหมด";
 
+  // Fetch all trips to get odometer data
+  const tripsRes = await jsonp("listTrips", { status: "" });
+  const tripOdo = {};
+  if (tripsRes.ok) {
+    tripsRes.trips.forEach(t => {
+      const start = parseFloat(t.startOdo) || 0;
+      const end   = parseFloat(t.endOdo) || 0;
+      const dist  = end > start ? end - start : 0;
+      tripOdo[t.tripId] = dist;
+    });
+  }
+
   // Build tables for each breakdown
-  const buildTable = (title, icon, data) => {
+  const buildTable = (title, icon, data, groupBy) => {
     if (!data || !Object.keys(data).length) {
       return `<div class="card section-gap">
         <div class="card-header"><span>${icon}</span><span class="card-title">${title}</span></div>
@@ -1052,15 +1087,36 @@ async function loadSummary() {
     }
 
     const rows = Object.entries(data)
-      .sort((a, b) => b[1].amount - a[1].amount) // sort by amount desc
-      .map(([id, val]) => `
-        <tr>
-          <td>${esc(id)}</td>
-          <td class="text-right mono">${numFmt(val.liters)}</td>
-          <td class="text-right mono">${numFmt(val.amount)}</td>
-          <td class="text-right mono">${val.liters > 0 ? numFmt(val.amount / val.liters) : "-"}</td>
-        </tr>
-      `).join("");
+      .sort((a, b) => b[1].amount - a[1].amount)
+      .map(([id, val]) => {
+        let efficiency = "-";
+        let totalDist = 0;
+
+        // Calculate distance based on group type
+        if (groupBy === "order" && val.tripIds) {
+          // For orders: sum distance from all related trips
+          val.tripIds.forEach(tid => {
+            totalDist += tripOdo[tid] || 0;
+          });
+        } else if (groupBy === "trip") {
+          // For individual trips
+          totalDist = tripOdo[id] || 0;
+        }
+
+        if (totalDist > 0 && val.liters > 0) {
+          efficiency = (val.liters / totalDist).toFixed(3);
+        }
+
+        return `
+          <tr>
+            <td>${esc(id)}</td>
+            <td class="text-right mono">${numFmt(val.liters)}</td>
+            <td class="text-right mono">${numFmt(val.amount)}</td>
+            <td class="text-right mono">${totalDist > 0 ? numFmt(totalDist) : "-"}</td>
+            <td class="text-right mono">${efficiency}</td>
+          </tr>
+        `;
+      }).join("");
 
     return `<div class="card section-gap">
       <div class="card-header"><span>${icon}</span><span class="card-title">${title}</span></div>
@@ -1072,7 +1128,8 @@ async function loadSummary() {
                 <th>รหัส</th>
                 <th class="text-right">ลิตร</th>
                 <th class="text-right">ค่าน้ำมัน (บาท)</th>
-                <th class="text-right">เฉลี่ย (บาท/ลิตร)</th>
+                <th class="text-right">ระยะทาง (กม.)</th>
+                <th class="text-right">อัตราสิ้นเปลือง (ลิตร/กม.)</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -1081,6 +1138,38 @@ async function loadSummary() {
       </div>
     </div>`;
   };
+
+  // For truck and driver: aggregate trips
+  const truckTrips = {};
+  const driverTrips = {};
+  
+  if (tripsRes.ok) {
+    tripsRes.trips.forEach(t => {
+      if (res.byTruck[t.truckId]) {
+        truckTrips[t.truckId] = truckTrips[t.truckId] || [];
+        truckTrips[t.truckId].push(t.tripId);
+      }
+      if (res.byDriver[t.driverId]) {
+        driverTrips[t.driverId] = driverTrips[t.driverId] || [];
+        driverTrips[t.driverId].push(t.tripId);
+      }
+    });
+  }
+
+  // Add trip IDs to data for distance calculation
+  Object.keys(res.byTruck || {}).forEach(id => {
+    res.byTruck[id].tripIds = truckTrips[id] || [];
+  });
+  Object.keys(res.byDriver || {}).forEach(id => {
+    res.byDriver[id].tripIds = driverTrips[id] || [];
+  });
+  Object.keys(res.byOrder || {}).forEach(id => {
+    // Find trips for this order
+    const orderTrips = tripsRes.ok 
+      ? tripsRes.trips.filter(t => t.orderId === id).map(t => t.tripId)
+      : [];
+    res.byOrder[id].tripIds = orderTrips;
+  });
 
   box.innerHTML = `
     <div class="stats-row">
@@ -1098,9 +1187,9 @@ async function loadSummary() {
       </div>
     </div>
 
-    ${buildTable("สรุปตามรถ", "🚛", res.byTruck)}
-    ${buildTable("สรุปตามคนขับ", "👨‍✈️", res.byDriver)}
-    ${buildTable("สรุปตาม Order", "📦", res.byOrder)}
+    ${buildTable("สรุปตามรถ", "🚛", res.byTruck, "truck")}
+    ${buildTable("สรุปตามคนขับ", "👨‍✈️", res.byDriver, "driver")}
+    ${buildTable("สรุปตาม Order", "📦", res.byOrder, "order")}
   `;
 }
 
