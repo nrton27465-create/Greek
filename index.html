@@ -1080,12 +1080,20 @@ async function loadSummary() {
   // Fetch all trips to get odometer data
   const tripsRes = await jsonp("listTrips", { status: "" });
   const tripOdo = {};
+  const tripToTruck = {};
+  const tripToDriver = {};
+  const tripToOrder = {};
+  
   if (tripsRes.ok) {
     tripsRes.trips.forEach(t => {
       const start = parseFloat(t.startOdo) || 0;
       const end   = parseFloat(t.endOdo) || 0;
       const dist  = end > start ? end - start : 0;
+      
       tripOdo[t.tripId] = dist;
+      tripToTruck[t.tripId] = t.truckId;
+      tripToDriver[t.tripId] = t.driverId;
+      tripToOrder[t.tripId] = t.orderId;
     });
   }
 
@@ -1104,16 +1112,16 @@ async function loadSummary() {
         let efficiency = "-";
         let totalDist = 0;
 
-        // Calculate distance based on group type
-        if (groupBy === "order" && val.tripIds) {
-          // For orders: sum distance from all related trips
-          val.tripIds.forEach(tid => {
-            totalDist += tripOdo[tid] || 0;
-          });
-        } else if (groupBy === "trip") {
-          // For individual trips
-          totalDist = tripOdo[id] || 0;
-        }
+        // Calculate total distance for this group
+        Object.entries(tripOdo).forEach(([tripId, dist]) => {
+          if (groupBy === "truck" && tripToTruck[tripId] === id) {
+            totalDist += dist;
+          } else if (groupBy === "driver" && tripToDriver[tripId] === id) {
+            totalDist += dist;
+          } else if (groupBy === "order" && tripToOrder[tripId] === id) {
+            totalDist += dist;
+          }
+        });
 
         if (totalDist > 0 && val.liters > 0) {
           efficiency = (val.liters / totalDist).toFixed(3);
@@ -1150,38 +1158,6 @@ async function loadSummary() {
       </div>
     </div>`;
   };
-
-  // For truck and driver: aggregate trips
-  const truckTrips = {};
-  const driverTrips = {};
-  
-  if (tripsRes.ok) {
-    tripsRes.trips.forEach(t => {
-      if (res.byTruck[t.truckId]) {
-        truckTrips[t.truckId] = truckTrips[t.truckId] || [];
-        truckTrips[t.truckId].push(t.tripId);
-      }
-      if (res.byDriver[t.driverId]) {
-        driverTrips[t.driverId] = driverTrips[t.driverId] || [];
-        driverTrips[t.driverId].push(t.tripId);
-      }
-    });
-  }
-
-  // Add trip IDs to data for distance calculation
-  Object.keys(res.byTruck || {}).forEach(id => {
-    res.byTruck[id].tripIds = truckTrips[id] || [];
-  });
-  Object.keys(res.byDriver || {}).forEach(id => {
-    res.byDriver[id].tripIds = driverTrips[id] || [];
-  });
-  Object.keys(res.byOrder || {}).forEach(id => {
-    // Find trips for this order
-    const orderTrips = tripsRes.ok 
-      ? tripsRes.trips.filter(t => t.orderId === id).map(t => t.tripId)
-      : [];
-    res.byOrder[id].tripIds = orderTrips;
-  });
 
   box.innerHTML = `
     <div class="stats-row">
