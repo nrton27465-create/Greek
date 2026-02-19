@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <style>
 /* ─── Reset & base ─────────────────────────────────────────── */
@@ -337,6 +339,29 @@ tbody tr:last-child td { border-bottom: none; }
 .stat-label { font-size: 11px; font-weight: 700; color: var(--gray-400); letter-spacing: .06em; text-transform: uppercase; }
 .stat-value { font-size: 28px; font-weight: 700; color: var(--navy); margin-top: 6px; font-family: var(--mono); }
 .stat-unit  { font-size: 12px; color: var(--gray-400); font-family: var(--font); font-weight: 400; margin-left: 4px; }
+
+/* ─── Chart containers ───────────────────────────────────────── */
+.charts-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 18px; }
+.chart-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+.chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-container {
+  position: relative;
+  height: 280px;
+}
 
 /* ─── Mono / code text ───────────────────────────────────────── */
 .mono { font-family: var(--mono); font-size: 12.5px; }
@@ -893,21 +918,33 @@ async function refreshPickers() {
   ]);
 
   if (ordersRes.ok) {
+    // Format: OrderId | CustomerName | ShipDate
     const items = ordersRes.orders.map(o => ({
       id:   o.orderId,
-      name: `${o.orderId}  |  ${o.customerName}  |  ${o.shipDate}  |  ${o.status}`
+      name: `${o.orderId} | ${o.customerName} | ${o.shipDate}`
     }));
     optionize("planOrderId", items, "-- เลือก Order --");
   }
 
   if (tripsRes.ok) {
     // กรอง Trip ที่ยังไม่ปิดงาน (ไม่ใช่ CLOSED)
+    // Format: TripId | CustomerName | ShipDate
     const items = tripsRes.trips
       .filter(t => String(t.status).toUpperCase() !== "CLOSED")
-      .map(t => ({
-        id:   t.tripId,
-        name: `${t.tripId}  |  ${t.orderId}  |  ${t.truckName}  |  ${t.driverName}  |  ${t.status}`
-      }));
+      .map(t => {
+        // Find order info to get customer name and ship date
+        const order = ordersRes.ok 
+          ? ordersRes.orders.find(o => o.orderId === t.orderId)
+          : null;
+        
+        const customerName = order ? order.customerName : '';
+        const shipDate = order ? order.shipDate : t.tripDate;
+        
+        return {
+          id:   t.tripId,
+          name: `${t.tripId} | ${customerName} | ${shipDate}`
+        };
+      });
     optionize("fuelTripId", items, "-- เลือก Trip --");
   }
 }
@@ -1175,10 +1212,158 @@ async function loadSummary() {
       </div>
     </div>
 
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">📈 อัตราสิ้นเปลืองตามรถ</div>
+        <div class="chart-container"><canvas id="chartTruck"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📈 อัตราสิ้นเปลืองตามคนขับ</div>
+        <div class="chart-container"><canvas id="chartDriver"></canvas></div>
+      </div>
+    </div>
+
     ${buildTable("สรุปตามรถ", "🚛", res.byTruck, "truck")}
     ${buildTable("สรุปตามคนขับ", "👨‍✈️", res.byDriver, "driver")}
     ${buildTable("สรุปตาม Order", "📦", res.byOrder, "order")}
   `;
+
+  // Render charts after DOM is ready
+  setTimeout(() => {
+    renderCharts(tripsRes.trips, tripOdo, tripToTruck, tripToDriver, from, to);
+  }, 100);
+}
+
+/* ─── Chart rendering ───────────────────────────────────────── */
+function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to) {
+  if (!trips || !trips.length) return;
+
+  // Filter trips by date range
+  const filteredTrips = trips.filter(t => {
+    const tripDate = String(t.tripDate || '');
+    if (from && tripDate < from) return false;
+    if (to && tripDate > to) return false;
+    return true;
+  });
+
+  // Group trips by date and calculate efficiency
+  const truckData = {};
+  const driverData = {};
+
+  filteredTrips.forEach(t => {
+    const date = t.tripDate;
+    const dist = tripOdo[t.tripId] || 0;
+    if (dist <= 0) return;
+
+    // Find fuel for this trip
+    const fuelLiters = parseFloat(t.plannedFuelLiters) || 0;
+    if (fuelLiters <= 0) return;
+
+    const efficiency = fuelLiters / dist;
+    const truckId = tripToTruck[t.tripId];
+    const driverId = tripToDriver[t.tripId];
+
+    // Group by truck
+    if (truckId) {
+      if (!truckData[truckId]) truckData[truckId] = {};
+      if (!truckData[truckId][date]) truckData[truckId][date] = [];
+      truckData[truckId][date].push(efficiency);
+    }
+
+    // Group by driver
+    if (driverId) {
+      if (!driverData[driverId]) driverData[driverId] = {};
+      if (!driverData[driverId][date]) driverData[driverId][date] = [];
+      driverData[driverId][date].push(efficiency);
+    }
+  });
+
+  // Calculate daily averages
+  const avgData = (groupData) => {
+    const result = {};
+    Object.entries(groupData).forEach(([id, dates]) => {
+      result[id] = {};
+      Object.entries(dates).forEach(([date, efficiencies]) => {
+        const avg = efficiencies.reduce((a, b) => a + b, 0) / efficiencies.length;
+        result[id][date] = avg;
+      });
+    });
+    return result;
+  };
+
+  const truckAvg = avgData(truckData);
+  const driverAvg = avgData(driverData);
+
+  // Get all unique dates and sort
+  const allDates = new Set();
+  [...Object.values(truckAvg), ...Object.values(driverAvg)].forEach(dates => {
+    Object.keys(dates).forEach(d => allDates.add(d));
+  });
+  const sortedDates = Array.from(allDates).sort();
+
+  // Prepare chart data
+  const colors = ['#1557c0', '#d67b00', '#1a8c5c', '#d63b3b', '#5b21b6', '#0369a1'];
+  
+  const prepareDatasets = (avgData) => {
+    return Object.entries(avgData).map(([id, dates], idx) => ({
+      label: id,
+      data: sortedDates.map(date => dates[date] || null),
+      borderColor: colors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length] + '20',
+      borderWidth: 2,
+      tension: 0.3,
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }));
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { font: { family: 'IBM Plex Sans Thai', size: 11 } } },
+      tooltip: {
+        callbacks: {
+          label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(3)} ลิตร/กม.`
+        }
+      }
+    },
+    scales: {
+      x: { 
+        title: { display: true, text: 'วันที่', font: { family: 'IBM Plex Sans Thai' } },
+        ticks: { font: { family: 'IBM Plex Mono', size: 10 } }
+      },
+      y: { 
+        title: { display: true, text: 'อัตราสิ้นเปลือง (ลิตร/กม.)', font: { family: 'IBM Plex Sans Thai' } },
+        ticks: { font: { family: 'IBM Plex Mono', size: 10 } },
+        beginAtZero: true
+      }
+    }
+  };
+
+  // Destroy existing charts
+  if (window.chartTruck) window.chartTruck.destroy();
+  if (window.chartDriver) window.chartDriver.destroy();
+
+  // Render truck chart
+  const ctxTruck = document.getElementById('chartTruck');
+  if (ctxTruck) {
+    window.chartTruck = new Chart(ctxTruck, {
+      type: 'line',
+      data: { labels: sortedDates, datasets: prepareDatasets(truckAvg) },
+      options: chartOptions
+    });
+  }
+
+  // Render driver chart
+  const ctxDriver = document.getElementById('chartDriver');
+  if (ctxDriver) {
+    window.chartDriver = new Chart(ctxDriver, {
+      type: 'line',
+      data: { labels: sortedDates, datasets: prepareDatasets(driverAvg) },
+      options: chartOptions
+    });
+  }
 }
 
 /* ─── Init ──────────────────────────────────────────────────── */
