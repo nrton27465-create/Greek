@@ -1314,17 +1314,18 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   const colors = ['#1557c0', '#d67b00', '#1a8c5c', '#d63b3b', '#5b21b6', '#0369a1'];
 
   const makeDatasets = (avgData) => {
-    return Object.entries(avgData).map(([id, dates], idx) => ({
-      label: id,
-      data: sortedDates.map(date => dates[date] !== undefined ? dates[date] : null),
-      borderColor: colors[idx % colors.length],
-      backgroundColor: colors[idx % colors.length] + '30',
-      borderWidth: 2.5,
-      tension: 0.3,
-      pointRadius: 4,
-      pointHoverRadius: 7,
-      fill: false
-    }));
+    return Object.entries(avgData).map(([id, dates], idx) => {
+      const color = colors[idx % colors.length];
+      return {
+        label: id,
+        data: sortedDates.map(date => dates[date] !== undefined ? dates[date] : null),
+        backgroundColor: color,
+        borderColor: color,
+        borderWidth: 0,
+        borderRadius: 6,
+        borderSkipped: false
+      };
+    });
   };
 
   const chartConfig = {
@@ -1335,9 +1336,10 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
       legend: { 
         position: 'top',
         labels: { 
-          font: { family: 'IBM Plex Sans Thai', size: 12 },
-          padding: 10,
-          usePointStyle: true
+          font: { family: 'IBM Plex Sans Thai', size: 12, weight: '600' },
+          padding: 12,
+          usePointStyle: true,
+          pointStyle: 'rect'
         }
       },
       tooltip: {
@@ -1392,7 +1394,7 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   const ctxTruck = document.getElementById('chartTruck');
   if (ctxTruck && Object.keys(truckAvg).length > 0) {
     window.chartTruck = new Chart(ctxTruck, {
-      type: 'line',
+      type: 'bar',
       data: { labels: sortedDates, datasets: makeDatasets(truckAvg) },
       options: chartConfig
     });
@@ -1402,7 +1404,7 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   const ctxDriver = document.getElementById('chartDriver');
   if (ctxDriver && Object.keys(driverAvg).length > 0) {
     window.chartDriver = new Chart(ctxDriver, {
-      type: 'line',
+      type: 'bar',
       data: { labels: sortedDates, datasets: makeDatasets(driverAvg) },
       options: chartConfig
     });
