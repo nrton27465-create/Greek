@@ -603,13 +603,19 @@ tbody tr:last-child td { border-bottom: none; }
       <!-- ── TAB 2: Plan / Assign ── -->
       <div id="tabPlan" class="tab-pane" style="display:none">
         <div class="card section-gap">
-          <div class="card-header"><span>🗺️</span><span class="card-title">วางแผนน้ำมัน</span></div>
+          <div class="card-header"><span>👨‍✈️</span><span class="card-title">มอบหมายงาน</span></div>
           <div class="card-body">
             <div class="form-grid cols-4">
               <div class="form-group col-span-2">
                 <label class="form-label">เลือก Order</label>
                 <select id="planOrderId" class="form-select"></select>
               </div>
+              <div class="form-group">
+                <label class="form-label">วันที่ออกวิ่ง</label>
+                <input id="tripDate" class="form-control date-picker" placeholder="เลือกวันที่" readonly>
+              </div>
+              <div class="form-group"><!-- spacer --></div>
+
               <div class="form-group">
                 <label class="form-label">น้ำมันที่วางแผน (ลิตร)</label>
                 <input id="plannedLiters" class="form-control" type="number" step="0.01" placeholder="0.00">
@@ -618,22 +624,7 @@ tbody tr:last-child td { border-bottom: none; }
                 <label class="form-label">งบน้ำมัน (บาท)</label>
                 <input id="plannedBudget" class="form-control" type="number" step="0.01" placeholder="0.00">
               </div>
-              <div class="form-group align-btn col-span-4" style="align-items:flex-start">
-                <button class="btn btn-outline" onclick="planOrder()">💾 บันทึกแผน</button>
-              </div>
-            </div>
-          </div>
-
-          <hr class="card-divider">
-          <div class="section-label">มอบหมายงาน</div>
-
-          <div class="card-body" style="padding-top:0">
-            <div class="form-grid cols-4">
               <div class="form-group">
-                <label class="form-label">วันที่ออกวิ่ง</label>
-                <input id="tripDate" class="form-control date-picker" placeholder="เลือกวันที่" readonly>
-              </div>
-              <div class="form-group col-span-2">
                 <label class="form-label">รถ</label>
                 <select id="truckId" class="form-select"></select>
               </div>
@@ -641,6 +632,7 @@ tbody tr:last-child td { border-bottom: none; }
                 <label class="form-label">คนขับ</label>
                 <select id="driverId" class="form-select"></select>
               </div>
+
               <div class="form-group col-span-3">
                 <label class="form-label">หมายเหตุ (มอบหมาย)</label>
                 <input id="assignNote" class="form-control" placeholder="เช่น เส้นทาง / เบอร์ติดต่อ">
@@ -1043,10 +1035,16 @@ async function refreshPickers() {
 
   if (ordersRes.ok) {
     // Format: OrderId | CustomerName
-    const items = ordersRes.orders.map(o => ({
-      id:   o.orderId,
-      name: `${o.orderId} | ${o.customerName}`
-    }));
+    // Filter: เฉพาะ NEW และ PLANNED (ยังไม่ถูกมอบหมาย)
+    const items = ordersRes.orders
+      .filter(o => {
+        const status = String(o.status || "").toUpperCase();
+        return status === "NEW" || status === "PLANNED";
+      })
+      .map(o => ({
+        id:   o.orderId,
+        name: `${o.orderId} | ${o.customerName}`
+      }));
     optionize("planOrderId", items, "-- เลือก Order --");
   }
 
@@ -1158,10 +1156,27 @@ async function assignOrder() {
   const truckId  = document.getElementById("truckId").value;
   const driverId = document.getElementById("driverId").value;
   const note     = document.getElementById("assignNote").value.trim();
-  const res      = await jsonp("assignOrder", { orderId, tripDate, truckId, driverId, note });
+  const plannedFuelLiters = document.getElementById("plannedLiters").value;
+  const plannedFuelBudget = document.getElementById("plannedBudget").value;
+  
+  // First, plan the order (set fuel budget) if provided
+  if (plannedFuelLiters || plannedFuelBudget) {
+    const planRes = await jsonp("planOrder", { orderId, plannedFuelLiters, plannedFuelBudget });
+    if (!planRes.ok) {
+      setMsg("planMsg", false, `บันทึกแผนน้ำมันไม่สำเร็จ: ${esc(planRes.error)}`);
+      return;
+    }
+  }
+  
+  // Then assign
+  const res = await jsonp("assignOrder", { orderId, tripDate, truckId, driverId, note });
 
   if (res.ok) {
     setMsg("planMsg", true, `มอบหมายสำเร็จ Trip ID: <b>${esc(res.tripId)}</b>`);
+    // Clear form
+    document.getElementById("plannedLiters").value = "";
+    document.getElementById("plannedBudget").value = "";
+    document.getElementById("assignNote").value = "";
     await Promise.all([loadTrips(), loadOrders(), refreshPickers()]);
   } else {
     setMsg("planMsg", false, esc(res.error || "ไม่สำเร็จ"));
