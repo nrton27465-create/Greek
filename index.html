@@ -621,7 +621,7 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="plannedLiters" class="form-control" type="number" step="0.01" placeholder="0.00">
               </div>
               <div class="form-group">
-                <label class="form-label">ค่าเบี้ยเลี้ยง (บาท)</label>
+                <label class="form-label">งบน้ำมัน (บาท)</label>
                 <input id="plannedBudget" class="form-control" type="number" step="0.01" placeholder="0.00">
               </div>
               <div class="form-group">
@@ -881,7 +881,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcZ1-wcQzti1P7RkBFWB1mT1cf1AG_4DIo3jZBOGnyJQAbOmRQcu3imdEbLtmjSVLw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc4Z0Y2427LCdCveC2z9Efs8A6Ql7ZJXbu1e2zAwzAE_u1ItBqF9w0eOHYg4PW9cJP/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1012,19 +1012,25 @@ async function loadAll() {
 
     DDL = data.ddl || { drivers: [], trucks: [], customers: [], products: [] };
     
-    // Customer autocomplete (datalist)
+    // Customer autocomplete
     const customerList = document.getElementById("customerList");
     if (customerList) {
-      customerList.innerHTML = (DDL.customers || []).map(c => 
+      customerList.innerHTML = DDL.customers.map(c => 
         `<option value="${esc(c.id)}">${esc(c.name)}</option>`
       ).join("");
     }
     
-    optionize("product",    DDL.products  || [], "-- เลือกสินค้า --");
-    optionize("truckId",    DDL.trucks    || [], "-- เลือกรถ --");
-    optionize("driverId",   DDL.drivers   || [], "-- เลือกคนขับ --");
+    // Other dropdowns
+    optionize("product",  DDL.products || [], "-- เลือกสินค้า --");
+    optionize("truckId",  DDL.trucks   || [], "-- เลือกรถ --");
+    optionize("driverId", DDL.drivers  || [], "-- เลือกคนขับ --");
 
-    await Promise.all([loadOrders(), loadTrips(), refreshPickers()]);
+    // Load data in parallel
+    await Promise.all([
+      loadOrders(),
+      loadTrips().then(() => refreshPickers())
+    ]);
+    
     renderDataTables();
   } catch(e) {
     console.error("Bootstrap error:", e);
@@ -1033,45 +1039,30 @@ async function loadAll() {
 }
 
 async function refreshPickers() {
-  const [ordersRes, tripsRes] = await Promise.all([
-    jsonp("listOrders", { status: "" }),
-    jsonp("listTrips",  { status: "" })  // ดึงทุก status
-  ]);
+  // Reuse existing trips data if available
+  if (!window.TRIPS_DATA || window.TRIPS_DATA.length === 0) {
+    const tripsRes = await jsonp("listTrips", { status: "" });
+    window.TRIPS_DATA = tripsRes.ok ? tripsRes.trips : [];
+  }
 
-  // Store trips globally for odometer lookup
-  window.TRIPS_DATA = tripsRes.ok ? tripsRes.trips : [];
+  const ordersRes = await jsonp("listOrders", { status: "" });
 
   if (ordersRes.ok) {
-    // Format: OrderId | CustomerName
-    // Filter: เฉพาะ NEW, PLANNED, และ IN_PROGRESS (ยังไม่ถูกมอบหมาย/กำลังดำเนินการ)
+    // Filter: เฉพาะ NEW, PLANNED, และ IN_PROGRESS
     const items = ordersRes.orders
-      .filter(o => {
-        const status = String(o.status || "").toUpperCase();
-        return status === "NEW" || status === "PLANNED" || status === "IN_PROGRESS";
-      })
-      .map(o => ({
-        id:   o.orderId,
-        name: `${o.orderId} | ${o.customerName}`
-      }));
+      .filter(o => ["NEW", "PLANNED", "IN_PROGRESS"].includes(String(o.status || "").toUpperCase()))
+      .map(o => ({ id: o.orderId, name: `${o.orderId} | ${o.customerName}` }));
     optionize("planOrderId", items, "-- เลือก Order --");
   }
 
-  if (tripsRes.ok) {
-    // กรอง Trip ที่ยังไม่ปิดงาน (ไม่ใช่ CLOSED)
-    // Format: TripId | CustomerName
-    const items = tripsRes.trips
+  if (window.TRIPS_DATA.length > 0) {
+    const items = window.TRIPS_DATA
       .filter(t => String(t.status).toUpperCase() !== "CLOSED")
       .map(t => {
-        // Find order info to get customer name
-        const order = ordersRes.ok 
-          ? ordersRes.orders.find(o => o.orderId === t.orderId)
-          : null;
-        
-        const customerName = order ? order.customerName : '';
-        
+        const order = ordersRes.ok ? ordersRes.orders.find(o => o.orderId === t.orderId) : null;
         return {
-          id:   t.tripId,
-          name: `${t.tripId} | ${customerName}`
+          id: t.tripId,
+          name: `${t.tripId} | ${order ? order.customerName : ''}`
         };
       });
     optionize("fuelTripId", items, "-- เลือก Trip --");
@@ -1112,7 +1103,6 @@ async function createOrder() {
   const unit         = document.getElementById("unit").value.trim();
   const pricePerUnit = document.getElementById("ppu").value;
   const note         = document.getElementById("orderNote").value.trim();
-
   const payload = { customerId, customerName, shipDate, origin: "",
                     destination, product: productName, qty, unit, pricePerUnit, note };
   const encoded = encodeURIComponent(JSON.stringify(payload));
@@ -1466,12 +1456,6 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   const truckAvg = calcAvg(truckByDate);
   const driverAvg = calcAvg(driverByDate);
 
-  console.log('Chart data:', { 
-    truckAvg, 
-    driverAvg, 
-    truckCount: Object.keys(truckAvg).length,
-    driverCount: Object.keys(driverAvg).length 
-  });
 
   // Get all dates
   const allDates = new Set();
@@ -1607,13 +1591,13 @@ async function addCustomer() {
     setMsg("cusMsg", false, "กรุณากรอกชื่อลูกค้า");
     return;
   }
-  // Use provided ID or let backend generate
   const res = await jsonp("addDDL", { type: "CUSTOMER", id: id || "", name });
   if (res.ok) {
     setMsg("cusMsg", true, `เพิ่มลูกค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newCusId").value = "";
     document.getElementById("newCusName").value = "";
-    await loadAll();
+    // Only reload DDL and update table
+    await reloadDDL();
     suggestNextId("newCusId", "CUS");
   } else {
     setMsg("cusMsg", false, esc(res.error || "ไม่สำเร็จ"));
@@ -1632,7 +1616,7 @@ async function addProduct() {
     setMsg("prdMsg", true, `เพิ่มสินค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newPrdId").value = "";
     document.getElementById("newPrdName").value = "";
-    await loadAll();
+    await reloadDDL();
     suggestNextId("newPrdId", "PRD");
   } else {
     setMsg("prdMsg", false, esc(res.error || "ไม่สำเร็จ"));
@@ -1655,7 +1639,7 @@ async function addDriver() {
     document.getElementById("newDrvId").value = "";
     document.getElementById("newDrvName").value = "";
     document.getElementById("newDrvEmpId").value = "";
-    await loadAll();
+    await reloadDDL();
     suggestNextId("newDrvId", "DRV");
   } else {
     setMsg("drvMsg", false, esc(res.error || "ไม่สำเร็จ"));
@@ -1674,10 +1658,32 @@ async function addTruck() {
     setMsg("trkMsg", true, `เพิ่มรถ <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newTrkId").value = "";
     document.getElementById("newTrkName").value = "";
-    await loadAll();
+    await reloadDDL();
     suggestNextId("newTrkId", "TRK");
   } else {
     setMsg("trkMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
+async function reloadDDL() {
+  const data = await jsonp("bootstrap");
+  if (data.ok) {
+    DDL = data.ddl || { drivers: [], trucks: [], customers: [], products: [] };
+    
+    // Update customer autocomplete
+    const customerList = document.getElementById("customerList");
+    if (customerList) {
+      customerList.innerHTML = DDL.customers.map(c => 
+        `<option value="${esc(c.id)}">${esc(c.name)}</option>`
+      ).join("");
+    }
+    
+    // Update dropdowns
+    optionize("product",  DDL.products || [], "-- เลือกสินค้า --");
+    optionize("truckId",  DDL.trucks   || [], "-- เลือกรถ --");
+    optionize("driverId", DDL.drivers  || [], "-- เลือกคนขับ --");
+    
+    renderDataTables();
   }
 }
 
@@ -1768,7 +1774,7 @@ async function deleteDDL(type, id, name) {
   const res = await jsonp("deleteDDL", { type, id });
   if (res.ok) {
     alert(`ลบ ${name} สำเร็จ`);
-    await loadAll();
+    await reloadDDL();
   } else {
     alert(`ลบไม่สำเร็จ: ${res.error || "Unknown error"}`);
   }
