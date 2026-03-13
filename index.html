@@ -1907,13 +1907,13 @@ function setupFuelRateSuggestion() {
         return;
       }
       
-      // Find customer by matching destination with customer name
-      const destination = String(order.destination || "").trim();
-      console.log("Destination:", destination);
+      // Find customer by customerId from order
+      const customerId = order.customerId;
+      console.log("Customer ID:", customerId);
       console.log("All customers:", DDL.customers);
       
-      const customer = DDL.customers.find(c => c.name === destination);
-      console.log("Customer found by destination:", customer);
+      const customer = DDL.customers.find(c => c.id === customerId);
+      console.log("Customer found:", customer);
       
       if (customer && (customer.fuelMin || customer.fuelMax)) {
         console.log("Auto-filling:", { min: customer.fuelMin, max: customer.fuelMax });
