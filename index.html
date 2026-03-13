@@ -527,8 +527,15 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="shipDate" class="form-control date-picker" placeholder="เลือกวันที่" readonly>
               </div>
               <div class="form-group">
+                <label class="form-label">จุดเริ่ม (ต้นทาง)</label>
+                <input id="origin" list="originList" class="form-control" placeholder="พิมพ์ค้นหา..." autocomplete="off">
+                <datalist id="originList"></datalist>
+              </div>
+
+              <div class="form-group col-span-2">
                 <label class="form-label">จุดส่ง (ปลายทาง)</label>
-                <input id="destination" class="form-control" placeholder="เช่น โคราช / โรงงาน A">
+                <input id="destination" list="destList" class="form-control" placeholder="พิมพ์ค้นหา..." autocomplete="off">
+                <datalist id="destList"></datalist>
               </div>
 
               <div class="form-group col-span-2">
@@ -764,7 +771,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="card section-gap">
           <div class="card-header"><span>👥</span><span class="card-title">จัดการลูกค้า</span></div>
           <div class="card-body">
-            <div class="form-grid cols-3">
+            <div class="form-grid cols-5">
               <div class="form-group">
                 <label class="form-label">รหัสลูกค้า</label>
                 <input id="newCusId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
@@ -773,6 +780,14 @@ tbody tr:last-child td { border-bottom: none; }
                 <label class="form-label">ชื่อลูกค้า</label>
                 <input id="newCusName" class="form-control" placeholder="เช่น บริษัท ABC จำกัด">
               </div>
+              <div class="form-group">
+                <label class="form-label">เรทน้ำมัน Min (ลิตร)</label>
+                <input id="newCusFuelMin" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">เรทน้ำมัน Max (ลิตร)</label>
+                <input id="newCusFuelMax" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
               <div class="form-group align-btn">
                 <button class="btn btn-primary" onclick="addCustomer()">+ เพิ่มลูกค้า</button>
               </div>
@@ -780,7 +795,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="msg" id="cusMsg"></div>
             <div class="table-wrap" style="margin-top:16px">
               <table>
-                <thead><tr><th>รหัส</th><th>ชื่อลูกค้า</th><th class="text-center">จัดการ</th></tr></thead>
+                <thead><tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>เรทน้ำมัน (ลิตร)</th><th class="text-center">จัดการ</th></tr></thead>
                 <tbody id="cusTable"></tbody>
               </table>
             </div>
@@ -881,7 +896,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcZ1-wcQzti1P7RkBFWB1mT1cf1AG_4DIo3jZBOGnyJQAbOmRQcu3imdEbLtmjSVLw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSKqeVM0avErBzdf5pqS3tM4QP2WcBUC9DukoNI0pauOGQt38NFTQoZizDgNoxJjog/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1020,6 +1035,23 @@ async function loadAll() {
       ).join("");
     }
     
+    // Origin autocomplete (customers starting with "บริษัท")
+    const originList = document.getElementById("originList");
+    if (originList) {
+      originList.innerHTML = DDL.customers
+        .filter(c => c.name.startsWith("บริษัท"))
+        .map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`)
+        .join("");
+    }
+    
+    // Destination autocomplete (all customers)
+    const destList = document.getElementById("destList");
+    if (destList) {
+      destList.innerHTML = DDL.customers
+        .map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`)
+        .join("");
+    }
+    
     // Other dropdowns
     optionize("product",  DDL.products || [], "-- เลือกสินค้า --");
     optionize("truckId",  DDL.trucks   || [], "-- เลือกรถ --");
@@ -1096,6 +1128,7 @@ async function createOrder() {
   
   const customerName = customer.name;
   const shipDate     = document.getElementById("shipDate").value.trim();
+  const origin       = document.getElementById("origin").value.trim();
   const destination  = document.getElementById("destination").value.trim();
   const productId    = document.getElementById("product").value;
   const productName  = (DDL.products.find(x => x.id === productId) || {}).name || productId;
@@ -1103,7 +1136,7 @@ async function createOrder() {
   const unit         = document.getElementById("unit").value.trim();
   const pricePerUnit = document.getElementById("ppu").value;
   const note         = document.getElementById("orderNote").value.trim();
-  const payload = { customerId, customerName, shipDate, origin: "",
+  const payload = { customerId, customerName, shipDate, origin,
                     destination, product: productName, qty, unit, pricePerUnit, note };
   const encoded = encodeURIComponent(JSON.stringify(payload));
   const res     = await jsonp("createOrder", { payload: encoded });
@@ -1128,6 +1161,8 @@ async function loadOrders() {
   }
 
   if (!res.orders.length) {
+  // Store orders globally for fuel rate lookup
+  window.ORDERS_DATA = res.orders || [];
     tb.innerHTML = `<tr><td colspan="8" class="text-center" style="color:var(--gray-400);padding:24px">ไม่พบข้อมูล</td></tr>`;
     return;
   }
@@ -1587,16 +1622,28 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
 async function addCustomer() {
   const id = document.getElementById("newCusId").value.trim();
   const name = document.getElementById("newCusName").value.trim();
+  const fuelMin = document.getElementById("newCusFuelMin").value.trim();
+  const fuelMax = document.getElementById("newCusFuelMax").value.trim();
+  
   if (!name) {
     setMsg("cusMsg", false, "กรุณากรอกชื่อลูกค้า");
     return;
   }
-  const res = await jsonp("addDDL", { type: "CUSTOMER", id: id || "", name });
+  
+  const res = await jsonp("addDDL", { 
+    type: "CUSTOMER", 
+    id: id || "", 
+    name,
+    fuelMin: fuelMin || "",
+    fuelMax: fuelMax || ""
+  });
+  
   if (res.ok) {
     setMsg("cusMsg", true, `เพิ่มลูกค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
     document.getElementById("newCusId").value = "";
     document.getElementById("newCusName").value = "";
-    // Only reload DDL and update table
+    document.getElementById("newCusFuelMin").value = "";
+    document.getElementById("newCusFuelMax").value = "";
     await reloadDDL();
     suggestNextId("newCusId", "CUS");
   } else {
@@ -1713,15 +1760,21 @@ function renderDataTables() {
   // Render customers
   const cusTable = document.getElementById("cusTable");
   if (cusTable) {
-    cusTable.innerHTML = DDL.customers.map(c => `
+    cusTable.innerHTML = DDL.customers.map(c => {
+      const fuelRate = (c.fuelMin || c.fuelMax) 
+        ? `${c.fuelMin || '?'} - ${c.fuelMax || '?'}`
+        : '-';
+      return `
       <tr>
         <td class="mono">${esc(c.id)}</td>
         <td>${esc(c.name)}</td>
+        <td class="mono">${esc(fuelRate)}</td>
         <td class="text-center">
           <button class="btn btn-sm btn-outline" onclick="deleteDDL('CUSTOMER','${esc(c.id)}','${esc(c.name)}')">ลบ</button>
         </td>
       </tr>
-    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    `;
+    }).join("") || '<tr><td colspan="4" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
   }
 
   // Render products
@@ -1790,9 +1843,39 @@ window.addEventListener("load", () => {
       suggestNextId("newPrdId", "PRD");
       suggestNextId("newDrvId", "DRV");
       suggestNextId("newTrkId", "TRK");
+      
+      // Add event listener for fuel rate suggestion
+      setupFuelRateSuggestion();
     });
   }
 });
+
+function setupFuelRateSuggestion() {
+  const planOrderSelect = document.getElementById("planOrderId");
+  if (planOrderSelect) {
+    planOrderSelect.addEventListener("change", function() {
+      const selectedText = this.options[this.selectedIndex]?.text || "";
+      const orderId = this.value;
+      
+      if (!orderId || !window.ORDERS_DATA) return;
+      
+      // Find order
+      const order = window.ORDERS_DATA.find(o => o.orderId === orderId);
+      if (!order) return;
+      
+      // Find customer
+      const customer = DDL.customers.find(c => c.id === order.customerId);
+      if (customer && (customer.fuelMin || customer.fuelMax)) {
+        const min = customer.fuelMin || "?";
+        const max = customer.fuelMax || "?";
+        const placeholder = `แนะนำ: ${min}-${max} ลิตร`;
+        document.getElementById("plannedLiters").placeholder = placeholder;
+      } else {
+        document.getElementById("plannedLiters").placeholder = "0.00";
+      }
+    });
+  }
+}
 </script>
 </body>
 </html>
