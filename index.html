@@ -1896,8 +1896,10 @@ function setupFuelRateSuggestion() {
         return;
       }
       
-      // Find customer
-      const customer = DDL.customers.find(c => c.id === order.customerId);
+      // Find customer by matching destination with customer name
+      const destination = String(order.destination || "").trim();
+      const customer = DDL.customers.find(c => c.name === destination);
+      
       if (customer && (customer.fuelMin || customer.fuelMax)) {
         // Auto-fill the values
         document.getElementById("plannedLitersMin").value = customer.fuelMin || "";
