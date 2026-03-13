@@ -1876,8 +1876,11 @@ function setupFuelRateSuggestion() {
     planOrderSelect.addEventListener("change", function() {
       const orderId = this.value;
       
+      console.log("=== Fuel Rate Debug ===");
+      console.log("Selected Order ID:", orderId);
+      
       if (!orderId || !window.ORDERS_DATA) {
-        // Clear fields
+        console.log("No order ID or ORDERS_DATA");
         document.getElementById("plannedLitersMin").value = "";
         document.getElementById("plannedLitersMax").value = "";
         return;
@@ -1885,12 +1888,20 @@ function setupFuelRateSuggestion() {
       
       // Find order
       const order = window.ORDERS_DATA.find(o => o.orderId === orderId);
-      if (!order) return;
+      console.log("Order found:", order);
+      
+      if (!order) {
+        console.log("Order not found in ORDERS_DATA");
+        return;
+      }
       
       // Check if origin starts with "บริษัท"
       const origin = String(order.origin || "").trim();
+      console.log("Origin:", origin);
+      console.log("Starts with 'บริษัท':", origin.startsWith("บริษัท"));
+      
       if (!origin.startsWith("บริษัท")) {
-        // Clear fields if origin is not "บริษัท"
+        console.log("Origin doesn't start with 'บริษัท' - clearing fields");
         document.getElementById("plannedLitersMin").value = "";
         document.getElementById("plannedLitersMax").value = "";
         return;
@@ -1898,17 +1909,22 @@ function setupFuelRateSuggestion() {
       
       // Find customer by matching destination with customer name
       const destination = String(order.destination || "").trim();
+      console.log("Destination:", destination);
+      console.log("All customers:", DDL.customers);
+      
       const customer = DDL.customers.find(c => c.name === destination);
+      console.log("Customer found by destination:", customer);
       
       if (customer && (customer.fuelMin || customer.fuelMax)) {
-        // Auto-fill the values
+        console.log("Auto-filling:", { min: customer.fuelMin, max: customer.fuelMax });
         document.getElementById("plannedLitersMin").value = customer.fuelMin || "";
         document.getElementById("plannedLitersMax").value = customer.fuelMax || "";
       } else {
-        // Clear if no fuel rate
+        console.log("No customer or no fuel rate - clearing fields");
         document.getElementById("plannedLitersMin").value = "";
         document.getElementById("plannedLitersMax").value = "";
       }
+      console.log("=== End Debug ===");
     });
   }
 }
