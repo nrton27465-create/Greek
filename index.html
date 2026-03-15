@@ -742,7 +742,30 @@ tbody tr:last-child td { border-bottom: none; }
                 <label class="form-label">เลขไมล์สิ้นสุด (กม.)</label>
                 <input id="fuelEndOdo" class="form-control" type="number" step="1" placeholder="เช่น 1260">
               </div>
-              <div class="form-group col-span-2">
+              <div class="form-group col-span-2"><!-- spacer --></div>
+
+              <div class="form-group">
+                <label class="form-label">ค่านอน (บาท)</label>
+                <input id="fuelAccommodation" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ค่าทางด่วน (บาท)</label>
+                <input id="fuelToll" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ค่าปะยาง-ซ่อม (บาท)</label>
+                <input id="fuelRepair" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">ค่าย้าย (บาท)</label>
+                <input id="fuelMoving" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">ค่าอื่นๆ (บาท)</label>
+                <input id="fuelOther" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group col-span-3">
                 <label class="form-label">หมายเหตุ</label>
                 <input id="fuelNote" class="form-control" placeholder="เช่น เติมปั๊ม PTT / ใบเสร็จเลขที่...">
               </div>
@@ -914,7 +937,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpK84gZ6TZSyhJDMuTFi3VNOV1OvxBWVolFBO_XgyhSzyb3yoL2WPHciEJxWUazLxp/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymZgnUXY11T5KlBfd-j6GAI9UaolJZcccrTOXhlnuy3lEcmVSmyxh7T_odEGxWTszw/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1359,6 +1382,11 @@ async function fuelReturn() {
   const liters       = document.getElementById("fuelLiters").value;
   const pricePerLiter = document.getElementById("fuelPpl").value;
   const amount       = document.getElementById("fuelAmount").value;
+  const accommodationCost = document.getElementById("fuelAccommodation").value;
+  const tollCost     = document.getElementById("fuelToll").value;
+  const repairCost   = document.getElementById("fuelRepair").value;
+  const movingCost   = document.getElementById("fuelMoving").value;
+  const otherCost    = document.getElementById("fuelOther").value;
   const note         = document.getElementById("fuelNote").value.trim();
   const startOdo     = document.getElementById("fuelStartOdo").value;
   const endOdo       = document.getElementById("fuelEndOdo").value;
@@ -1386,8 +1414,9 @@ async function fuelReturn() {
   }
   
   const res = await jsonp("fuelReturn", { 
-    tripId, fuelDate, liters, pricePerLiter, amount, note,
-    startOdo, endOdo 
+    tripId, fuelDate, liters, pricePerLiter, amount,
+    accommodationCost, tollCost, repairCost, movingCost, otherCost,
+    note, startOdo, endOdo 
   });
 
   if (res.ok) {
@@ -1397,6 +1426,11 @@ async function fuelReturn() {
     document.getElementById("fuelLiters").value = "";
     document.getElementById("fuelPpl").value = "";
     document.getElementById("fuelAmount").value = "";
+    document.getElementById("fuelAccommodation").value = "";
+    document.getElementById("fuelToll").value = "";
+    document.getElementById("fuelRepair").value = "";
+    document.getElementById("fuelMoving").value = "";
+    document.getElementById("fuelOther").value = "";
     document.getElementById("fuelNote").value = "";
     document.getElementById("fuelStartOdo").value = "";
     document.getElementById("fuelEndOdo").value = "";
