@@ -1082,6 +1082,9 @@ async function loadAll() {
     ]);
     
     renderDataTables();
+    
+    // Setup event listener after data is loaded
+    setupFuelRateSuggestion();
   } catch(e) {
     console.error("Bootstrap error:", e);
     alert("Connection error: " + e.message + "\n\nกรุณาตรวจสอบ:\n1. SCRIPT_URL ถูกต้องหรือไม่\n2. Deploy Apps Script แล้วหรือยัง\n3. เปิด Console (F12) ดู error เพิ่มเติม");
@@ -1957,9 +1960,6 @@ window.addEventListener("load", () => {
       suggestNextId("newPrdId", "PRD");
       suggestNextId("newDrvId", "DRV");
       suggestNextId("newTrkId", "TRK");
-      
-      // Add event listener for fuel rate suggestion
-      setupFuelRateSuggestion();
     });
   }
 });
@@ -1971,6 +1971,8 @@ function setupFuelRateSuggestion() {
       const orderId = this.value;
       
       console.log("🔍 Order selected:", orderId);
+      console.log("📊 ORDERS_DATA exists:", !!window.ORDERS_DATA);
+      console.log("📊 ORDERS_DATA count:", window.ORDERS_DATA ? window.ORDERS_DATA.length : 0);
       
       if (!orderId || !window.ORDERS_DATA) {
         console.log("❌ No orderId or ORDERS_DATA");
@@ -1984,7 +1986,8 @@ function setupFuelRateSuggestion() {
       console.log("📦 Order data:", order);
       
       if (!order) {
-        console.log("❌ Order not found");
+        console.log("❌ Order not found in ORDERS_DATA");
+        console.log("Available orders:", window.ORDERS_DATA.map(o => o.orderId));
         return;
       }
       
@@ -2003,7 +2006,7 @@ function setupFuelRateSuggestion() {
       // Find customer by customerId from order
       const customerId = order.customerId;
       console.log("👤 Customer ID:", customerId);
-      console.log("📋 All customers:", DDL.customers);
+      console.log("📋 DDL.customers count:", DDL.customers.length);
       
       const customer = DDL.customers.find(c => c.id === customerId);
       console.log("✓ Customer found:", customer);
@@ -2020,6 +2023,7 @@ function setupFuelRateSuggestion() {
       }
     });
   }
+  console.log("✅ setupFuelRateSuggestion initialized");
 }
 </script>
 </body>
