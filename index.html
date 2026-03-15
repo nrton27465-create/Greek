@@ -198,9 +198,17 @@ html, body { height: 100%; font-family: var(--font); font-size: 14px; color: var
   display: grid;
   gap: 12px 16px;
 }
+.cols-6 { grid-template-columns: repeat(6, 1fr); }
 .cols-4 { grid-template-columns: repeat(4, 1fr); }
 .cols-3 { grid-template-columns: repeat(3, 1fr); }
 .cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cols-6 { grid-template-columns: 1fr; }
+  .cols-4 { grid-template-columns: 1fr; }
+  .cols-3 { grid-template-columns: 1fr; }
+}
 .col-span-2 { grid-column: span 2; }
 .col-span-3 { grid-column: span 3; }
 .col-span-4 { grid-column: span 4; }
@@ -777,7 +785,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="card section-gap">
           <div class="card-header"><span>👥</span><span class="card-title">จัดการลูกค้า</span></div>
           <div class="card-body">
-            <div class="form-grid cols-5">
+            <div class="form-grid cols-6">
               <div class="form-group">
                 <label class="form-label">รหัสลูกค้า</label>
                 <input id="newCusId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
@@ -794,6 +802,10 @@ tbody tr:last-child td { border-bottom: none; }
                 <label class="form-label">เรทน้ำมัน Max (ลิตร)</label>
                 <input id="newCusFuelMax" class="form-control" type="number" step="0.01" placeholder="0.00">
               </div>
+              <div class="form-group">
+                <label class="form-label">ค่าเที่ยว (บาท)</label>
+                <input id="newCusTripCost" class="form-control" type="number" step="0.01" placeholder="0.00">
+              </div>
               <div class="form-group align-btn">
                 <button class="btn btn-primary" onclick="addCustomer()">+ เพิ่มลูกค้า</button>
               </div>
@@ -801,7 +813,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="msg" id="cusMsg"></div>
             <div class="table-wrap" style="margin-top:16px">
               <table>
-                <thead><tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>เรทน้ำมัน (ลิตร)</th><th class="text-center">จัดการ</th></tr></thead>
+                <thead><tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>เรทน้ำมัน (ลิตร)</th><th>ค่าเที่ยว (บาท)</th><th class="text-center">จัดการ</th></tr></thead>
                 <tbody id="cusTable"></tbody>
               </table>
             </div>
@@ -1132,16 +1144,36 @@ async function createOrder() {
     return;
   }
   
-  const customerName = customer.name;
   const shipDate     = document.getElementById("shipDate").value.trim();
-  const origin       = document.getElementById("origin").value.trim();
   const destination  = document.getElementById("destination").value.trim();
   const productId    = document.getElementById("product").value;
-  const productName  = (DDL.products.find(x => x.id === productId) || {}).name || productId;
   const qty          = document.getElementById("qty").value;
+  
+  // Validation
+  if (!shipDate) {
+    setMsg("orderMsg", false, "กรุณาเลือกวันที่ส่ง");
+    return;
+  }
+  if (!destination) {
+    setMsg("orderMsg", false, "กรุณากรอกจุดส่ง (ปลายทาง)");
+    return;
+  }
+  if (!productId) {
+    setMsg("orderMsg", false, "กรุณาเลือกสินค้า");
+    return;
+  }
+  if (!qty || parseFloat(qty) <= 0) {
+    setMsg("orderMsg", false, "กรุณากรอกจำนวนที่ถูกต้อง");
+    return;
+  }
+  
+  const customerName = customer.name;
+  const origin       = document.getElementById("origin").value.trim();
+  const productName  = (DDL.products.find(x => x.id === productId) || {}).name || productId;
   const unit         = document.getElementById("unit").value.trim();
   const pricePerUnit = document.getElementById("ppu").value;
   const note         = document.getElementById("orderNote").value.trim();
+  
   const payload = { customerId, customerName, shipDate, origin,
                     destination, product: productName, qty, unit, pricePerUnit, note };
   const encoded = encodeURIComponent(JSON.stringify(payload));
@@ -1149,8 +1181,19 @@ async function createOrder() {
 
   if (res.ok) {
     setMsg("orderMsg", true, `บันทึกสำเร็จ Order ID: <b>${esc(res.orderId)}</b>`);
-    await loadOrders();
-    await refreshPickers();
+    
+    // Clear form
+    document.getElementById("customerId").value = "";
+    document.getElementById("shipDate").value = "";
+    document.getElementById("origin").value = "บริษัท";
+    document.getElementById("destination").value = "";
+    document.getElementById("product").value = "";
+    document.getElementById("qty").value = "";
+    document.getElementById("unit").value = "ตัน";
+    document.getElementById("ppu").value = "";
+    document.getElementById("orderNote").value = "";
+    
+    await Promise.all([loadOrders(), refreshPickers()]);
   } else {
     setMsg("orderMsg", false, esc(res.error || "บันทึกไม่สำเร็จ"));
   }
@@ -1182,7 +1225,7 @@ async function loadOrders() {
       <td>${esc(o.product)}</td>
       <td class="text-right">${esc(o.qty)} <small style="color:var(--gray-400)">${esc(o.unit)}</small></td>
       <td class="text-right mono">${numFmt(o.totalPrice)}</td>
-      <td class="text-center"><span class="${badgeClass(o.status)}">${esc(o.status)}</span></td>
+      <td class="text-center"><span class="badge ${badgeClass(o.status)}">${esc(o.status)}</span></td>
     </tr>
   `).join("");
 }
@@ -1212,6 +1255,24 @@ async function assignOrder() {
   const plannedLitersMin = document.getElementById("plannedLitersMin").value;
   const plannedLitersMax = document.getElementById("plannedLitersMax").value;
   const plannedFuelBudget = document.getElementById("plannedBudget").value;
+  
+  // Validation
+  if (!orderId) {
+    setMsg("planMsg", false, "กรุณาเลือก Order");
+    return;
+  }
+  if (!tripDate) {
+    setMsg("planMsg", false, "กรุณาเลือกวันที่ออกวิ่ง");
+    return;
+  }
+  if (!truckId) {
+    setMsg("planMsg", false, "กรุณาเลือกรถ");
+    return;
+  }
+  if (!driverId) {
+    setMsg("planMsg", false, "กรุณาเลือกคนขับ");
+    return;
+  }
   
   // Calculate average of Min/Max for plannedFuelLiters
   let plannedFuelLiters = "";
@@ -1244,6 +1305,9 @@ async function assignOrder() {
     document.getElementById("plannedLitersMax").value = "";
     document.getElementById("plannedBudget").value = "";
     document.getElementById("assignNote").value = "";
+    
+    // Clear cache and reload
+    window.TRIPS_DATA = [];
     await Promise.all([loadTrips(), loadOrders(), refreshPickers()]);
   } else {
     setMsg("planMsg", false, esc(res.error || "ไม่สำเร็จ"));
@@ -1274,7 +1338,7 @@ async function loadTrips() {
       <td>${esc(t.driverName || t.driverId)}</td>
       <td class="text-right mono">${numFmt(t.plannedFuelLiters)}</td>
       <td class="text-right mono">${numFmt(t.plannedFuelBudget)}</td>
-      <td class="text-center"><span class="${badgeClass(t.status)}">${esc(t.status)}</span></td>
+      <td class="text-center"><span class="badge ${badgeClass(t.status)}">${esc(t.status)}</span></td>
     </tr>
   `).join("");
 }
@@ -1289,6 +1353,28 @@ async function fuelReturn() {
   const note         = document.getElementById("fuelNote").value.trim();
   const startOdo     = document.getElementById("fuelStartOdo").value;
   const endOdo       = document.getElementById("fuelEndOdo").value;
+  
+  // Validation
+  if (!tripId) {
+    setMsg("fuelMsg", false, "กรุณาเลือก Trip");
+    return;
+  }
+  if (!fuelDate) {
+    setMsg("fuelMsg", false, "กรุณาเลือกวันที่เติม");
+    return;
+  }
+  if (!liters || parseFloat(liters) <= 0) {
+    setMsg("fuelMsg", false, "กรุณากรอกจำนวนลิตรที่ถูกต้อง");
+    return;
+  }
+  if (!startOdo || parseFloat(startOdo) < 0) {
+    setMsg("fuelMsg", false, "กรุณากรอกเลขไมล์เริ่มต้นที่ถูกต้อง");
+    return;
+  }
+  if (!endOdo || parseFloat(endOdo) <= parseFloat(startOdo)) {
+    setMsg("fuelMsg", false, "เลขไมล์สิ้นสุดต้องมากกว่าเลขไมล์เริ่มต้น");
+    return;
+  }
   
   const res = await jsonp("fuelReturn", { 
     tripId, fuelDate, liters, pricePerLiter, amount, note,
@@ -1305,6 +1391,9 @@ async function fuelReturn() {
     document.getElementById("fuelNote").value = "";
     document.getElementById("fuelStartOdo").value = "";
     document.getElementById("fuelEndOdo").value = "";
+    
+    // Clear cache and reload
+    window.TRIPS_DATA = [];
     await Promise.all([loadTrips(), loadOrders(), refreshPickers()]);
   } else {
     setMsg("fuelMsg", false, esc(res.error || "ไม่สำเร็จ"));
@@ -1644,6 +1733,7 @@ async function addCustomer() {
   const name = document.getElementById("newCusName").value.trim();
   const fuelMin = document.getElementById("newCusFuelMin").value.trim();
   const fuelMax = document.getElementById("newCusFuelMax").value.trim();
+  const tripCost = document.getElementById("newCusTripCost").value.trim();
   
   if (!name) {
     setMsg("cusMsg", false, "กรุณากรอกชื่อลูกค้า");
@@ -1655,7 +1745,8 @@ async function addCustomer() {
     id: id || "", 
     name,
     fuelMin: fuelMin || "",
-    fuelMax: fuelMax || ""
+    fuelMax: fuelMax || "",
+    tripCost: tripCost || ""
   });
   
   if (res.ok) {
@@ -1664,6 +1755,7 @@ async function addCustomer() {
     document.getElementById("newCusName").value = "";
     document.getElementById("newCusFuelMin").value = "";
     document.getElementById("newCusFuelMax").value = "";
+    document.getElementById("newCusTripCost").value = "";
     await reloadDDL();
     suggestNextId("newCusId", "CUS");
   } else {
@@ -1784,17 +1876,19 @@ function renderDataTables() {
       const fuelRate = (c.fuelMin || c.fuelMax) 
         ? `${c.fuelMin || '?'} - ${c.fuelMax || '?'}`
         : '-';
+      const tripCost = c.tripCost || '-';
       return `
       <tr>
         <td class="mono">${esc(c.id)}</td>
         <td>${esc(c.name)}</td>
         <td class="mono">${esc(fuelRate)}</td>
+        <td class="mono text-right">${esc(tripCost)}</td>
         <td class="text-center">
           <button class="btn btn-sm btn-outline" onclick="deleteDDL('CUSTOMER','${esc(c.id)}','${esc(c.name)}')">ลบ</button>
         </td>
       </tr>
     `;
-    }).join("") || '<tr><td colspan="4" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
+    }).join("") || '<tr><td colspan="5" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
   }
 
   // Render products
@@ -1876,11 +1970,7 @@ function setupFuelRateSuggestion() {
     planOrderSelect.addEventListener("change", function() {
       const orderId = this.value;
       
-      console.log("=== Fuel Rate Debug ===");
-      console.log("Selected Order ID:", orderId);
-      
       if (!orderId || !window.ORDERS_DATA) {
-        console.log("No order ID or ORDERS_DATA");
         document.getElementById("plannedLitersMin").value = "";
         document.getElementById("plannedLitersMax").value = "";
         return;
@@ -1888,20 +1978,13 @@ function setupFuelRateSuggestion() {
       
       // Find order
       const order = window.ORDERS_DATA.find(o => o.orderId === orderId);
-      console.log("Order found:", order);
-      
-      if (!order) {
-        console.log("Order not found in ORDERS_DATA");
-        return;
-      }
+      if (!order) return;
       
       // Check if origin starts with "บริษัท"
       const origin = String(order.origin || "").trim();
-      console.log("Origin:", origin);
-      console.log("Starts with 'บริษัท':", origin.startsWith("บริษัท"));
       
       if (!origin.startsWith("บริษัท")) {
-        console.log("Origin doesn't start with 'บริษัท' - clearing fields");
+        // Clear fields if origin is not "บริษัท"
         document.getElementById("plannedLitersMin").value = "";
         document.getElementById("plannedLitersMax").value = "";
         return;
@@ -1909,22 +1992,17 @@ function setupFuelRateSuggestion() {
       
       // Find customer by customerId from order
       const customerId = order.customerId;
-      console.log("Customer ID:", customerId);
-      console.log("All customers:", DDL.customers);
-      
       const customer = DDL.customers.find(c => c.id === customerId);
-      console.log("Customer found:", customer);
       
       if (customer && (customer.fuelMin || customer.fuelMax)) {
-        console.log("Auto-filling:", { min: customer.fuelMin, max: customer.fuelMax });
+        // Auto-fill the values
         document.getElementById("plannedLitersMin").value = customer.fuelMin || "";
         document.getElementById("plannedLitersMax").value = customer.fuelMax || "";
       } else {
-        console.log("No customer or no fuel rate - clearing fields");
+        // Clear if no fuel rate
         document.getElementById("plannedLitersMin").value = "";
         document.getElementById("plannedLitersMax").value = "";
       }
-      console.log("=== End Debug ===");
     });
   }
 }
