@@ -914,7 +914,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2C98OJz99NxQySa7DGudkFiyrtg7SSDHSOVt5Br5Mer5vVaXJOPsfwxX41lJ1TVRO/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpK84gZ6TZSyhJDMuTFi3VNOV1OvxBWVolFBO_XgyhSzyb3yoL2WPHciEJxWUazLxp/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1101,6 +1101,10 @@ async function refreshPickers() {
   const ordersRes = await jsonp("listOrders", { status: "" });
 
   if (ordersRes.ok) {
+    // Store ALL orders globally (not filtered)
+    window.ORDERS_DATA = ordersRes.orders || [];
+    console.log("✅ refreshPickers - ORDERS_DATA loaded:", window.ORDERS_DATA.length, "orders");
+    
     // Filter: เฉพาะ NEW, PLANNED, และ IN_PROGRESS
     const items = ordersRes.orders
       .filter(o => ["NEW", "PLANNED", "IN_PROGRESS"].includes(String(o.status || "").toUpperCase()))
@@ -1212,9 +1216,11 @@ async function loadOrders() {
     return;
   }
 
-  if (!res.orders.length) {
-  // Store orders globally for fuel rate lookup
+  // Store orders globally for fuel rate lookup (MUST BE BEFORE THE LENGTH CHECK)
   window.ORDERS_DATA = res.orders || [];
+  console.log("✅ ORDERS_DATA loaded:", window.ORDERS_DATA.length, "orders");
+
+  if (!res.orders.length) {
     tb.innerHTML = `<tr><td colspan="8" class="text-center" style="color:var(--gray-400);padding:24px">ไม่พบข้อมูล</td></tr>`;
     return;
   }
@@ -1966,64 +1972,46 @@ window.addEventListener("load", () => {
 
 function setupFuelRateSuggestion() {
   const planOrderSelect = document.getElementById("planOrderId");
-  if (planOrderSelect) {
-    planOrderSelect.addEventListener("change", function() {
-      const orderId = this.value;
-      
-      console.log("🔍 Order selected:", orderId);
-      console.log("📊 ORDERS_DATA exists:", !!window.ORDERS_DATA);
-      console.log("📊 ORDERS_DATA count:", window.ORDERS_DATA ? window.ORDERS_DATA.length : 0);
-      
-      if (!orderId || !window.ORDERS_DATA) {
-        console.log("❌ No orderId or ORDERS_DATA");
-        document.getElementById("plannedLitersMin").value = "";
-        document.getElementById("plannedLitersMax").value = "";
-        return;
-      }
-      
-      // Find order
-      const order = window.ORDERS_DATA.find(o => o.orderId === orderId);
-      console.log("📦 Order data:", order);
-      
-      if (!order) {
-        console.log("❌ Order not found in ORDERS_DATA");
-        console.log("Available orders:", window.ORDERS_DATA.map(o => o.orderId));
-        return;
-      }
-      
-      // Check if origin starts with "บริษัท"
-      const origin = String(order.origin || "").trim();
-      console.log("📍 Origin:", origin);
-      console.log("✓ Starts with 'บริษัท'?", origin.startsWith("บริษัท"));
-      
-      if (!origin.startsWith("บริษัท")) {
-        console.log("❌ Origin doesn't start with 'บริษัท'");
-        document.getElementById("plannedLitersMin").value = "";
-        document.getElementById("plannedLitersMax").value = "";
-        return;
-      }
-      
-      // Find customer by customerId from order
-      const customerId = order.customerId;
-      console.log("👤 Customer ID:", customerId);
-      console.log("📋 DDL.customers count:", DDL.customers.length);
-      
-      const customer = DDL.customers.find(c => c.id === customerId);
-      console.log("✓ Customer found:", customer);
-      
-      if (customer && (customer.fuelMin || customer.fuelMax)) {
-        console.log("⛽ Fuel rates:", { min: customer.fuelMin, max: customer.fuelMax });
-        document.getElementById("plannedLitersMin").value = customer.fuelMin || "";
-        document.getElementById("plannedLitersMax").value = customer.fuelMax || "";
-        console.log("✅ Auto-filled successfully!");
-      } else {
-        console.log("❌ No customer or no fuel rate");
-        document.getElementById("plannedLitersMin").value = "";
-        document.getElementById("plannedLitersMax").value = "";
-      }
-    });
-  }
-  console.log("✅ setupFuelRateSuggestion initialized");
+  if (!planOrderSelect) return;
+  
+  planOrderSelect.addEventListener("change", function() {
+    const orderId = this.value;
+    
+    if (!orderId || !window.ORDERS_DATA) {
+      document.getElementById("plannedLitersMin").value = "";
+      document.getElementById("plannedLitersMax").value = "";
+      return;
+    }
+    
+    // Step 1: หา Order จาก orderId
+    const order = window.ORDERS_DATA.find(o => o.orderId === orderId);
+    if (!order) {
+      document.getElementById("plannedLitersMin").value = "";
+      document.getElementById("plannedLitersMax").value = "";
+      return;
+    }
+    
+    // Step 2: เช็คว่า origin ขึ้นต้นด้วย "บริษัท" หรือไม่
+    const origin = String(order.origin || "").trim();
+    if (!origin.startsWith("บริษัท")) {
+      document.getElementById("plannedLitersMin").value = "";
+      document.getElementById("plannedLitersMax").value = "";
+      return;
+    }
+    
+    // Step 3: ใช้ customerId จาก order ไปหาใน DDL.customers
+    const customerId = order.customerId;
+    const customer = DDL.customers.find(c => c.id === customerId);
+    
+    // Step 4: ถ้าเจอและมี fuelMin/fuelMax ให้ auto-fill
+    if (customer && (customer.fuelMin || customer.fuelMax)) {
+      document.getElementById("plannedLitersMin").value = customer.fuelMin || "";
+      document.getElementById("plannedLitersMax").value = customer.fuelMax || "";
+    } else {
+      document.getElementById("plannedLitersMin").value = "";
+      document.getElementById("plannedLitersMax").value = "";
+    }
+  });
 }
 </script>
 </body>
