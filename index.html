@@ -645,20 +645,16 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
               <div class="form-group"><!-- spacer --></div>
 
-              <div class="form-group">
-                <label class="form-label">รถ</label>
-                <select id="truckId" class="form-select"></select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">คนขับ</label>
+              <div class="form-group col-span-2">
+                <label class="form-label">คนขับ (ระบุชื่อ + ทะเบียนรถ)</label>
                 <select id="driverId" class="form-select"></select>
               </div>
-
-              <div class="form-group col-span-3">
+              <div class="form-group col-span-2">
                 <label class="form-label">หมายเหตุ (มอบหมาย)</label>
                 <input id="assignNote" class="form-control" placeholder="เช่น เส้นทาง / เบอร์ติดต่อ">
               </div>
-              <div class="form-group align-btn">
+
+              <div class="form-group align-btn col-span-4">
                 <button class="btn btn-primary btn-full" onclick="assignOrder()">✓ มอบหมาย</button>
               </div>
             </div>
@@ -903,29 +899,6 @@ tbody tr:last-child td { border-bottom: none; }
 
         <!-- รถขนส่ง -->
         <div class="card">
-          <div class="card-header"><span>🚛</span><span class="card-title">จัดการรถขนส่ง</span></div>
-          <div class="card-body">
-            <div class="form-grid cols-3">
-              <div class="form-group">
-                <label class="form-label">รหัสรถ</label>
-                <input id="newTrkId" class="form-control" placeholder="สร้างอัตโนมัติ" readonly>
-              </div>
-              <div class="form-group">
-                <label class="form-label">ชื่อรถ / ทะเบียน</label>
-                <input id="newTrkName" class="form-control" placeholder="เช่น 70-1234">
-              </div>
-              <div class="form-group align-btn">
-                <button class="btn btn-primary" onclick="addTruck()">+ เพิ่มรถ</button>
-              </div>
-            </div>
-            <div class="msg" id="trkMsg"></div>
-            <div class="table-wrap" style="margin-top:16px">
-              <table>
-                <thead><tr><th>รหัส</th><th>ชื่อรถ/ทะเบียน</th><th class="text-center">จัดการ</th></tr></thead>
-                <tbody id="trkTable"></tbody>
-              </table>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -937,7 +910,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymZgnUXY11T5KlBfd-j6GAI9UaolJZcccrTOXhlnuy3lEcmVSmyxh7T_odEGxWTszw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGva_Cnr7cDpP-OLByqoj7CjPiFqGFf9aVXcBNiruv_1uomMUCmXqiv-qknnpI1JT4/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1048,7 +1021,7 @@ function calcFuelAmt() {
 }
 
 /* ─── App state ─────────────────────────────────────────────── */
-let DDL = { drivers:[], trucks:[], customers:[], products:[] };
+let DDL = { drivers:[], customers:[], products:[] };
 
 /* ─── Bootstrap ─────────────────────────────────────────────── */
 async function loadAll() {
@@ -1066,7 +1039,7 @@ async function loadAll() {
       return; 
     }
 
-    DDL = data.ddl || { drivers: [], trucks: [], customers: [], products: [] };
+    DDL = data.ddl || { drivers: [], customers: [], products: [] };
     
     // Customer autocomplete
     const customerList = document.getElementById("customerList");
@@ -1095,7 +1068,6 @@ async function loadAll() {
     
     // Other dropdowns
     optionize("product",  DDL.products || [], "-- เลือกสินค้า --");
-    optionize("truckId",  DDL.trucks   || [], "-- เลือกรถ --");
     optionize("driverId", DDL.drivers  || [], "-- เลือกคนขับ --");
 
     // Load data in parallel
@@ -1281,7 +1253,6 @@ async function planOrder() {
 async function assignOrder() {
   const orderId  = document.getElementById("planOrderId").value;
   const tripDate = document.getElementById("tripDate").value.trim();
-  const truckId  = document.getElementById("truckId").value;
   const driverId = document.getElementById("driverId").value;
   const note     = document.getElementById("assignNote").value.trim();
   const plannedLitersMin = document.getElementById("plannedLitersMin").value;
@@ -1295,10 +1266,6 @@ async function assignOrder() {
   }
   if (!tripDate) {
     setMsg("planMsg", false, "กรุณาเลือกวันที่ออกวิ่ง");
-    return;
-  }
-  if (!truckId) {
-    setMsg("planMsg", false, "กรุณาเลือกรถ");
     return;
   }
   if (!driverId) {
@@ -1328,7 +1295,7 @@ async function assignOrder() {
   }
   
   // Then assign
-  const res = await jsonp("assignOrder", { orderId, tripDate, truckId, driverId, note });
+  const res = await jsonp("assignOrder", { orderId, tripDate, driverId, note });
 
   if (res.ok) {
     setMsg("planMsg", true, `มอบหมายสำเร็จ Trip ID: <b>${esc(res.tripId)}</b>`);
@@ -1848,29 +1815,11 @@ async function addDriver() {
   }
 }
 
-async function addTruck() {
-  const id = document.getElementById("newTrkId").value.trim();
-  const name = document.getElementById("newTrkName").value.trim();
-  if (!name) {
-    setMsg("trkMsg", false, "กรุณากรอกชื่อรถ/ทะเบียน");
-    return;
-  }
-  const res = await jsonp("addDDL", { type: "TRUCK", id: id || "", name });
-  if (res.ok) {
-    setMsg("trkMsg", true, `เพิ่มรถ <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
-    document.getElementById("newTrkId").value = "";
-    document.getElementById("newTrkName").value = "";
-    await reloadDDL();
-    suggestNextId("newTrkId", "TRK");
-  } else {
-    setMsg("trkMsg", false, esc(res.error || "ไม่สำเร็จ"));
-  }
-}
 
 async function reloadDDL() {
   const data = await jsonp("bootstrap");
   if (data.ok) {
-    DDL = data.ddl || { drivers: [], trucks: [], customers: [], products: [] };
+    DDL = data.ddl || { drivers: [], customers: [], products: [] };
     
     // Update customer autocomplete
     const customerList = document.getElementById("customerList");
@@ -1882,7 +1831,6 @@ async function reloadDDL() {
     
     // Update dropdowns
     optionize("product",  DDL.products || [], "-- เลือกสินค้า --");
-    optionize("truckId",  DDL.trucks   || [], "-- เลือกรถ --");
     optionize("driverId", DDL.drivers  || [], "-- เลือกคนขับ --");
     
     renderDataTables();
@@ -1894,8 +1842,7 @@ function suggestNextId(inputId, prefix) {
   let max = 0;
   const items = prefix === "CUS" ? DDL.customers :
                 prefix === "PRD" ? DDL.products :
-                prefix === "DRV" ? DDL.drivers :
-                prefix === "TRK" ? DDL.trucks : [];
+                prefix === "DRV" ? DDL.drivers : [];
   
   items.forEach(item => {
     const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
@@ -1963,19 +1910,6 @@ function renderDataTables() {
     `).join("") || '<tr><td colspan="4" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
   }
 
-  // Render trucks
-  const trkTable = document.getElementById("trkTable");
-  if (trkTable) {
-    trkTable.innerHTML = DDL.trucks.map(t => `
-      <tr>
-        <td class="mono">${esc(t.id)}</td>
-        <td>${esc(t.name)}</td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-outline" onclick="deleteDDL('TRUCK','${esc(t.id)}','${esc(t.name)}')">ลบ</button>
-        </td>
-      </tr>
-    `).join("") || '<tr><td colspan="3" class="text-center" style="color:var(--gray-400);padding:16px">ยังไม่มีข้อมูล</td></tr>';
-  }
 }
 
 async function deleteDDL(type, id, name) {
@@ -1999,7 +1933,6 @@ window.addEventListener("load", () => {
       suggestNextId("newCusId", "CUS");
       suggestNextId("newPrdId", "PRD");
       suggestNextId("newDrvId", "DRV");
-      suggestNextId("newTrkId", "TRK");
     });
   }
 });
