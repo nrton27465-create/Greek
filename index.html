@@ -1744,6 +1744,14 @@ async function addCustomer() {
     return;
   }
   
+  // If ID exists and is not auto-suggested, it's in edit mode - call update instead
+  const existingCustomer = DDL.customers.find(c => c.id === id);
+  if (id && existingCustomer) {
+    // Already in edit mode, call updateCustomer
+    await updateCustomer(id);
+    return;
+  }
+  
   const res = await jsonp("addDDL", { 
     type: "CUSTOMER", 
     id: id || "", 
@@ -1774,6 +1782,14 @@ async function addProduct() {
     setMsg("prdMsg", false, "กรุณากรอกชื่อสินค้า");
     return;
   }
+  
+  // Check if in edit mode
+  const existingProduct = DDL.products.find(p => p.id === id);
+  if (id && existingProduct) {
+    await updateProduct(id);
+    return;
+  }
+  
   const res = await jsonp("addDDL", { type: "PRODUCT", id: id || "", name });
   if (res.ok) {
     setMsg("prdMsg", true, `เพิ่มสินค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
@@ -1793,6 +1809,13 @@ async function addDriver() {
   
   if (!name) {
     setMsg("drvMsg", false, "กรุณากรอกชื่อพนักงาน");
+    return;
+  }
+  
+  // Check if in edit mode
+  const existingDriver = DDL.drivers.find(d => d.id === id);
+  if (id && existingDriver) {
+    await updateDriver(id);
     return;
   }
   
