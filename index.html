@@ -826,7 +826,7 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="newCusTripCost" class="form-control" type="number" step="0.01" placeholder="0.00">
               </div>
               <div class="form-group align-btn">
-                <button id="cusBtn" class="btn btn-primary" onclick="addCustomer()">+ เพิ่มลูกค้า</button>
+                <button class="btn btn-primary" onclick="addCustomer()">+ เพิ่มลูกค้า</button>
               </div>
             </div>
             <div class="msg" id="cusMsg"></div>
@@ -853,7 +853,7 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="newPrdName" class="form-control" placeholder="เช่น ปูนซีเมนต์">
               </div>
               <div class="form-group align-btn">
-                <button id="prdBtn" class="btn btn-primary" onclick="addProduct()">+ เพิ่มสินค้า</button>
+                <button class="btn btn-primary" onclick="addProduct()">+ เพิ่มสินค้า</button>
               </div>
             </div>
             <div class="msg" id="prdMsg"></div>
@@ -884,7 +884,7 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="newDrvEmpId" class="form-control" placeholder="เช่น EMP-001">
               </div>
               <div class="form-group align-btn">
-                <button id="drvBtn" class="btn btn-primary" onclick="addDriver()">+ เพิ่มพนักงาน</button>
+                <button class="btn btn-primary" onclick="addDriver()">+ เพิ่มพนักงาน</button>
               </div>
             </div>
             <div class="msg" id="drvMsg"></div>
@@ -1532,6 +1532,8 @@ async function loadSummary() {
 
     <div class="charts-row">
       <div class="chart-card">
+        <div class="chart-title">📈 อัตราสิ้นเปลืองตามรถ</div>
+        <div class="chart-container"><canvas id="chartTruck"></canvas></div>
       </div>
       <div class="chart-card">
         <div class="chart-title">📈 อัตราสิ้นเปลืองตามคนขับ</div>
@@ -1712,6 +1714,9 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   };
 
   // Destroy existing charts if they exist
+  if (window.chartTruck && typeof window.chartTruck.destroy === 'function') {
+    window.chartTruck.destroy();
+  }
   if (window.chartDriver && typeof window.chartDriver.destroy === 'function') {
     window.chartDriver.destroy();
   }
@@ -1719,6 +1724,12 @@ async function renderCharts(trips, tripOdo, tripToTruck, tripToDriver, from, to)
   // Render truck chart
   const ctxTruck = document.getElementById('chartTruck');
   if (ctxTruck && Object.keys(truckAvg).length > 0) {
+    window.chartTruck = new Chart(ctxTruck, {
+      type: 'bar',
+      data: { labels: formattedDates, datasets: makeDatasets(truckAvg) },
+      options: chartConfig
+    });
+  }
 
   // Render driver chart
   const ctxDriver = document.getElementById('chartDriver');
@@ -1741,14 +1752,6 @@ async function addCustomer() {
   
   if (!name) {
     setMsg("cusMsg", false, "กรุณากรอกชื่อลูกค้า");
-    return;
-  }
-  
-  // If ID exists and is not auto-suggested, it's in edit mode - call update instead
-  const existingCustomer = DDL.customers.find(c => c.id === id);
-  if (id && existingCustomer) {
-    // Already in edit mode, call updateCustomer
-    await updateCustomer(id);
     return;
   }
   
@@ -1782,14 +1785,6 @@ async function addProduct() {
     setMsg("prdMsg", false, "กรุณากรอกชื่อสินค้า");
     return;
   }
-  
-  // Check if in edit mode
-  const existingProduct = DDL.products.find(p => p.id === id);
-  if (id && existingProduct) {
-    await updateProduct(id);
-    return;
-  }
-  
   const res = await jsonp("addDDL", { type: "PRODUCT", id: id || "", name });
   if (res.ok) {
     setMsg("prdMsg", true, `เพิ่มสินค้า <b>${esc(name)}</b> รหัส <b>${esc(res.id)}</b> สำเร็จ`);
@@ -1809,13 +1804,6 @@ async function addDriver() {
   
   if (!name) {
     setMsg("drvMsg", false, "กรุณากรอกชื่อพนักงาน");
-    return;
-  }
-  
-  // Check if in edit mode
-  const existingDriver = DDL.drivers.find(d => d.id === id);
-  if (id && existingDriver) {
-    await updateDriver(id);
     return;
   }
   
@@ -1955,7 +1943,7 @@ function editCustomer(id) {
   document.getElementById("newCusTripCost").value = customer.tripCost || "";
   
   // Change button to update mode
-  const btn = document.getElementById("cusBtn");
+  const btn = document.querySelector("#cusMsg").previousElementSibling.previousElementSibling.querySelector("button");
   btn.textContent = "💾 บันทึกการแก้ไข";
   btn.onclick = () => updateCustomer(id);
 }
@@ -1971,8 +1959,6 @@ async function updateCustomer(id) {
     return;
   }
   
-  console.log("Updating customer:", { type: "CUSTOMER", id, name, fuelMin, fuelMax, tripCost });
-  
   const res = await jsonp("updateDDL", { 
     type: "CUSTOMER", 
     id, 
@@ -1981,8 +1967,6 @@ async function updateCustomer(id) {
     fuelMax: fuelMax || "",
     tripCost: tripCost || ""
   });
-  
-  console.log("Update response:", res);
   
   if (res.ok) {
     setMsg("cusMsg", true, `แก้ไขลูกค้า <b>${esc(name)}</b> สำเร็จ`);
@@ -1993,7 +1977,7 @@ async function updateCustomer(id) {
     document.getElementById("newCusTripCost").value = "";
     
     // Reset button
-    const btn = document.getElementById("cusBtn");
+    const btn = document.querySelector("#cusMsg").previousElementSibling.previousElementSibling.querySelector("button");
     btn.textContent = "+ เพิ่มลูกค้า";
     btn.onclick = addCustomer;
     
@@ -2011,7 +1995,7 @@ function editProduct(id) {
   document.getElementById("newPrdId").value = product.id;
   document.getElementById("newPrdName").value = product.name;
   
-  const btn = document.getElementById("prdBtn");
+  const btn = document.querySelector("#prdMsg").previousElementSibling.previousElementSibling.querySelector("button");
   btn.textContent = "💾 บันทึกการแก้ไข";
   btn.onclick = () => updateProduct(id);
 }
@@ -2031,7 +2015,7 @@ async function updateProduct(id) {
     document.getElementById("newPrdId").value = "";
     document.getElementById("newPrdName").value = "";
     
-    const btn = document.getElementById("prdBtn");
+    const btn = document.querySelector("#prdMsg").previousElementSibling.previousElementSibling.querySelector("button");
     btn.textContent = "+ เพิ่มสินค้า";
     btn.onclick = addProduct;
     
@@ -2050,7 +2034,7 @@ function editDriver(id) {
   document.getElementById("newDrvName").value = driver.name;
   document.getElementById("newDrvEmpId").value = driver.empId || "";
   
-  const btn = document.getElementById("drvBtn");
+  const btn = document.querySelector("#drvMsg").previousElementSibling.previousElementSibling.querySelector("button");
   btn.textContent = "💾 บันทึกการแก้ไข";
   btn.onclick = () => updateDriver(id);
 }
@@ -2072,7 +2056,7 @@ async function updateDriver(id) {
     document.getElementById("newDrvName").value = "";
     document.getElementById("newDrvEmpId").value = "";
     
-    const btn = document.getElementById("drvBtn");
+    const btn = document.querySelector("#drvMsg").previousElementSibling.previousElementSibling.querySelector("button");
     btn.textContent = "+ เพิ่มพนักงาน";
     btn.onclick = addDriver;
     
