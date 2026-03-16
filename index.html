@@ -910,7 +910,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─────────────────────────────────────────────────────────────
    🔑 SCRIPT_URL — ใส่ /exec URL ของ Apps Script ที่ Deploy แล้ว
    ───────────────────────────────────────────────────────────── */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8anHjj3Mapuv_BXH1i9w7Zi7Djctraz5Zm3UMRhEfTvkIpmQlTANvu4d8nm_oxUrx/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyokaXVVcpLm9R7jkHP-g9VQX1r5CMSRZHK0WBLWzoFxYAA2iFAoA81oWAxO55aRK6z/exec";
 
 /* ─── Tabs ──────────────────────────────────────────────────── */
 const TAB_META = {
@@ -1541,7 +1541,6 @@ async function loadSummary() {
       </div>
     </div>
 
-    ${buildTable("สรุปตามรถ", "🚛", res.byTruck, "truck")}
     ${buildTable("สรุปตามคนขับ", "👨‍✈️", res.byDriver, "driver")}
     ${buildTable("สรุปตาม Order", "📦", res.byOrder, "order")}
   `;
@@ -1880,6 +1879,7 @@ function renderDataTables() {
         <td class="mono">${esc(fuelRate)}</td>
         <td class="mono text-right">${esc(tripCost)}</td>
         <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="editCustomer('${esc(c.id)}')">แก้ไข</button>
           <button class="btn btn-sm btn-outline" onclick="deleteDDL('CUSTOMER','${esc(c.id)}','${esc(c.name)}')">ลบ</button>
         </td>
       </tr>
@@ -1895,6 +1895,7 @@ function renderDataTables() {
         <td class="mono">${esc(p.id)}</td>
         <td>${esc(p.name)}</td>
         <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="editProduct('${esc(p.id)}')">แก้ไข</button>
           <button class="btn btn-sm btn-outline" onclick="deleteDDL('PRODUCT','${esc(p.id)}','${esc(p.name)}')">ลบ</button>
         </td>
       </tr>
@@ -1910,6 +1911,7 @@ function renderDataTables() {
         <td>${esc(d.name)}</td>
         <td class="mono">${esc(d.empId || '-')}</td>
         <td class="text-center">
+          <button class="btn btn-sm btn-outline" onclick="editDriver('${esc(d.id)}')">แก้ไข</button>
           <button class="btn btn-sm btn-outline" onclick="deleteDDL('DRIVER','${esc(d.id)}','${esc(d.name)}')">ลบ</button>
         </td>
       </tr>
@@ -1929,6 +1931,142 @@ async function deleteDDL(type, id, name) {
     alert(`ลบไม่สำเร็จ: ${res.error || "Unknown error"}`);
   }
 }
+
+function editCustomer(id) {
+  const customer = DDL.customers.find(c => c.id === id);
+  if (!customer) return;
+  
+  document.getElementById("newCusId").value = customer.id;
+  document.getElementById("newCusName").value = customer.name;
+  document.getElementById("newCusFuelMin").value = customer.fuelMin || "";
+  document.getElementById("newCusFuelMax").value = customer.fuelMax || "";
+  document.getElementById("newCusTripCost").value = customer.tripCost || "";
+  
+  // Change button to update mode
+  const btn = document.querySelector("#cusMsg").previousElementSibling.previousElementSibling.querySelector("button");
+  btn.textContent = "💾 บันทึกการแก้ไข";
+  btn.onclick = () => updateCustomer(id);
+}
+
+async function updateCustomer(id) {
+  const name = document.getElementById("newCusName").value.trim();
+  const fuelMin = document.getElementById("newCusFuelMin").value.trim();
+  const fuelMax = document.getElementById("newCusFuelMax").value.trim();
+  const tripCost = document.getElementById("newCusTripCost").value.trim();
+  
+  if (!name) {
+    setMsg("cusMsg", false, "กรุณากรอกชื่อลูกค้า");
+    return;
+  }
+  
+  const res = await jsonp("updateDDL", { 
+    type: "CUSTOMER", 
+    id, 
+    name,
+    fuelMin: fuelMin || "",
+    fuelMax: fuelMax || "",
+    tripCost: tripCost || ""
+  });
+  
+  if (res.ok) {
+    setMsg("cusMsg", true, `แก้ไขลูกค้า <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newCusId").value = "";
+    document.getElementById("newCusName").value = "";
+    document.getElementById("newCusFuelMin").value = "";
+    document.getElementById("newCusFuelMax").value = "";
+    document.getElementById("newCusTripCost").value = "";
+    
+    // Reset button
+    const btn = document.querySelector("#cusMsg").previousElementSibling.previousElementSibling.querySelector("button");
+    btn.textContent = "+ เพิ่มลูกค้า";
+    btn.onclick = addCustomer;
+    
+    await reloadDDL();
+    suggestNextId("newCusId", "CUS");
+  } else {
+    setMsg("cusMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
+function editProduct(id) {
+  const product = DDL.products.find(p => p.id === id);
+  if (!product) return;
+  
+  document.getElementById("newPrdId").value = product.id;
+  document.getElementById("newPrdName").value = product.name;
+  
+  const btn = document.querySelector("#prdMsg").previousElementSibling.previousElementSibling.querySelector("button");
+  btn.textContent = "💾 บันทึกการแก้ไข";
+  btn.onclick = () => updateProduct(id);
+}
+
+async function updateProduct(id) {
+  const name = document.getElementById("newPrdName").value.trim();
+  
+  if (!name) {
+    setMsg("prdMsg", false, "กรุณากรอกชื่อสินค้า");
+    return;
+  }
+  
+  const res = await jsonp("updateDDL", { type: "PRODUCT", id, name });
+  
+  if (res.ok) {
+    setMsg("prdMsg", true, `แก้ไขสินค้า <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newPrdId").value = "";
+    document.getElementById("newPrdName").value = "";
+    
+    const btn = document.querySelector("#prdMsg").previousElementSibling.previousElementSibling.querySelector("button");
+    btn.textContent = "+ เพิ่มสินค้า";
+    btn.onclick = addProduct;
+    
+    await reloadDDL();
+    suggestNextId("newPrdId", "PRD");
+  } else {
+    setMsg("prdMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
+function editDriver(id) {
+  const driver = DDL.drivers.find(d => d.id === id);
+  if (!driver) return;
+  
+  document.getElementById("newDrvId").value = driver.id;
+  document.getElementById("newDrvName").value = driver.name;
+  document.getElementById("newDrvEmpId").value = driver.empId || "";
+  
+  const btn = document.querySelector("#drvMsg").previousElementSibling.previousElementSibling.querySelector("button");
+  btn.textContent = "💾 บันทึกการแก้ไข";
+  btn.onclick = () => updateDriver(id);
+}
+
+async function updateDriver(id) {
+  const name = document.getElementById("newDrvName").value.trim();
+  const empId = document.getElementById("newDrvEmpId").value.trim();
+  
+  if (!name) {
+    setMsg("drvMsg", false, "กรุณากรอกชื่อพนักงาน");
+    return;
+  }
+  
+  const res = await jsonp("updateDDL", { type: "DRIVER", id, name, empId: empId || "" });
+  
+  if (res.ok) {
+    setMsg("drvMsg", true, `แก้ไขพนักงาน <b>${esc(name)}</b> สำเร็จ`);
+    document.getElementById("newDrvId").value = "";
+    document.getElementById("newDrvName").value = "";
+    document.getElementById("newDrvEmpId").value = "";
+    
+    const btn = document.querySelector("#drvMsg").previousElementSibling.previousElementSibling.querySelector("button");
+    btn.textContent = "+ เพิ่มพนักงาน";
+    btn.onclick = addDriver;
+    
+    await reloadDDL();
+    suggestNextId("newDrvId", "DRV");
+  } else {
+    setMsg("drvMsg", false, esc(res.error || "ไม่สำเร็จ"));
+  }
+}
+
 
 /* ─── Init ──────────────────────────────────────────────────── */
 window.addEventListener("load", () => {
